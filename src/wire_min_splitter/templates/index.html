@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wire-Min-Splitter</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260228p" />
+  </head>
+  <body>
+    <main class="container">
+      <div class="page-top">
+        <h1 data-i18n="app.title">Wire-Min-Splitter</h1>
+        <div class="lang-switch" aria-label="Language">
+          <button
+            type="button"
+            class="lang-btn"
+            data-lang-button
+            data-lang="en"
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            class="lang-btn"
+            data-lang-button
+            data-lang="ko"
+          >
+            한국어
+          </button>
+          <button
+            type="button"
+            class="lang-btn"
+            data-lang-button
+            data-lang="ja"
+          >
+            日本語
+          </button>
+          <button
+            type="button"
+            class="lang-btn"
+            data-lang-button
+            data-lang="zh"
+          >
+            中文
+          </button>
+        </div>
+      </div>
+      <p class="subhead" data-i18n="app.subtitle">
+        Enter party spending and optional fairness adjustments, then generate
+        minimal transfer instructions.
+      </p>
+
+      <section class="card">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <button id="add-row" type="button" data-i18n="button.add_person">
+              Add Person
+            </button>
+            <label class="field-inline" for="people-count">
+              <span data-i18n="label.people">People</span>
+              <input
+                id="people-count"
+                type="number"
+                min="1"
+                step="1"
+                value="3"
+              />
+            </label>
+            <button
+              id="apply-count"
+              type="button"
+              class="secondary"
+              data-i18n="button.apply_count"
+            >
+              Apply Count
+            </button>
+          </div>
+          <div class="toolbar-right">
+            <label class="field-inline" for="name-reset-mode">
+              <span data-i18n="label.name_reset">Name Reset</span>
+              <select id="name-reset-mode">
+                <option value="abcd" selected>ABCD</option>
+                <option value="empty">Empty</option>
+                <option value="human_int">Human 01, 02</option>
+              </select>
+            </label>
+            <button
+              id="reset-names"
+              type="button"
+              class="secondary"
+              data-i18n="button.reset_names"
+            >
+              Reset Names
+            </button>
+            <label class="checkbox" data-i18n-title="tooltip.enable_drag">
+              <input
+                id="enable-drag"
+                type="checkbox"
+                checked
+                data-i18n-title="tooltip.enable_drag"
+              />
+              <span data-i18n="label.enable_drag">Enable drag reorder</span>
+            </label>
+            <label class="checkbox" data-i18n-title="tooltip.strict_preference">
+              <input
+                id="strict-preference"
+                type="checkbox"
+                data-i18n-title="tooltip.strict_preference"
+              />
+              <span data-i18n="label.strict_preference">
+                Strict preference mode
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <table id="participants">
+          <thead>
+            <tr>
+              <th></th>
+              <th data-i18n="table.name">Name</th>
+              <th class="repeat-col">
+                <span class="col-head">
+                  <span data-i18n="table.repeat">Repeat</span>
+                  <label
+                    class="head-checkbox"
+                    data-i18n-title="tooltip.enable_repeat"
+                  >
+                    <input
+                      id="enable-repeat"
+                      type="checkbox"
+                      data-i18n-title="tooltip.enable_repeat"
+                    />
+                  </label>
+                </span>
+              </th>
+              <th data-i18n="table.spent">Spent</th>
+              <th class="extra-pay-col">
+                <span class="col-head">
+                  <span data-i18n="table.extra_pay">Extra Pay</span>
+                  <label
+                    class="head-checkbox"
+                    data-i18n-title="tooltip.enable_extra_pay"
+                  >
+                    <input
+                      id="enable-extra-pay"
+                      type="checkbox"
+                      data-i18n-title="tooltip.enable_extra_pay"
+                    />
+                  </label>
+                </span>
+              </th>
+              <th class="extra-get-col">
+                <span class="col-head">
+                  <span data-i18n="table.extra_get">Extra Get</span>
+                  <label
+                    class="head-checkbox"
+                    data-i18n-title="tooltip.enable_extra_get"
+                  >
+                    <input
+                      id="enable-extra-get"
+                      type="checkbox"
+                      data-i18n-title="tooltip.enable_extra_get"
+                    />
+                  </label>
+                </span>
+              </th>
+              <th data-i18n="table.preferred_multi">Preferred Multi-Payer</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div class="actions">
+          <div class="actions-inline">
+            <label
+              class="field-inline"
+              for="multiplier"
+              data-i18n-title="tooltip.multiplier"
+            >
+              <span data-i18n="label.multiplier">Multiplier</span>
+              <input
+                id="multiplier"
+                type="number"
+                min="0.00000001"
+                step="0.0001"
+                value="1"
+                data-i18n-title="tooltip.multiplier"
+              />
+            </label>
+            <label
+              class="field-inline"
+              for="number-style"
+              data-i18n-title="tooltip.number_style"
+            >
+              <span data-i18n="label.number_style">Number Format</span>
+              <select id="number-style" data-i18n-title="tooltip.number_style">
+                <option value="comma_period" data-i18n="option.comma_period">
+                  1,000.00
+                </option>
+                <option value="period_comma" data-i18n="option.period_comma">
+                  1.000,00
+                </option>
+              </select>
+            </label>
+            <label
+              id="rounding-before-group"
+              class="rounding-stepper"
+              data-i18n-title="tooltip.result_rounding_before"
+            >
+              <span id="rounding-before-label" data-i18n="label.result_rounding_before">
+                Before Multiplier
+              </span>
+              <div class="rounding-controls">
+                <button
+                  id="rounding-before-left"
+                  type="button"
+                  class="secondary rounding-arrow"
+                  data-i18n-title="tooltip.rounding_left"
+                >
+                  ←
+                </button>
+                <output id="rounding-before-display">0.01</output>
+                <button
+                  id="rounding-before-right"
+                  type="button"
+                  class="secondary rounding-arrow"
+                  data-i18n-title="tooltip.rounding_right"
+                >
+                  →
+                </button>
+              </div>
+            </label>
+            <label
+              id="rounding-after-group"
+              class="rounding-stepper"
+              data-i18n-title="tooltip.result_rounding_after"
+            >
+              <span id="rounding-after-label" data-i18n="label.result_rounding_after">
+                After Multiplier
+              </span>
+              <div class="rounding-controls">
+                <button
+                  id="rounding-after-left"
+                  type="button"
+                  class="secondary rounding-arrow"
+                  data-i18n-title="tooltip.rounding_left"
+                >
+                  ←
+                </button>
+                <output id="rounding-after-display">0.01</output>
+                <button
+                  id="rounding-after-right"
+                  type="button"
+                  class="secondary rounding-arrow"
+                  data-i18n-title="tooltip.rounding_right"
+                >
+                  →
+                </button>
+              </div>
+            </label>
+            <button
+              id="calculate"
+              type="button"
+              class="tertiary"
+              data-i18n="button.recalculate"
+              data-i18n-title="tooltip.force_recalculate"
+            >
+              Force Recalculate
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="section.result">Result</h2>
+        <p id="error" class="error hidden"></p>
+        <div id="result" class="hidden">
+          <p id="summary"></p>
+          <h3 data-i18n="section.net_balances">Net Balances</h3>
+          <ul id="balances"></ul>
+          <h3 data-i18n="section.transfers">Transfers</h3>
+          <ol id="transfers"></ol>
+        </div>
+      </section>
+    </main>
+
+    <template id="row-template">
+      <tr>
+        <td class="center">
+          <button
+            type="button"
+            class="drag-handle"
+            title="Drag to reorder"
+            data-i18n-title="title.drag_handle"
+          >
+            ::
+          </button>
+        </td>
+        <td>
+          <input
+            type="text"
+            class="name"
+            placeholder="Name"
+            data-i18n-placeholder="placeholder.name"
+          />
+        </td>
+        <td class="repeat-col">
+          <input
+            type="number"
+            class="repeat"
+            min="1"
+            step="1"
+            value="1"
+            data-i18n-title="tooltip.repeat"
+          />
+        </td>
+        <td><input type="number" class="spent" step="0.01" value="0" /></td>
+        <td class="extra-pay-col">
+          <input type="number" class="extra-pay" step="0.01" value="0" />
+        </td>
+        <td class="extra-get-col">
+          <input type="number" class="extra-get" step="0.01" value="0" />
+        </td>
+        <td class="center">
+          <input
+            type="checkbox"
+            class="preferred"
+            data-i18n-title="tooltip.preferred_multi"
+          />
+        </td>
+        <td>
+          <button type="button" class="remove" data-i18n="button.remove">
+            Remove
+          </button>
+        </td>
+      </tr>
+    </template>
+
+    <script src="/static/app.js?v=20260228p"></script>
+  </body>
+</html>
