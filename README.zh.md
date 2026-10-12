@@ -1,78 +1,41 @@
-# 最少转账AA计算器 (MoneySplit / Wire-Min-Splitter)
+# 最少转账AA计算器 (MoneySplit)
 
-请在浏览器中打开 [https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)。
+MoneySplit 用于分摊共同支出，并找出结清账目所需的最少转账次数。
+在浏览器中打开 [moneysplit-e1m.pages.dev](https://moneysplit-e1m.pages.dev/)。无需账号，也无需安装。
 
-在浏览器内计算结算的静态网站。界面语言为英语、韩语、日语、中文。姓名和金额不会发送到计算服务器。不需要账户、数据库、支付服务或 Python 服务器。
-
-用户只需要浏览器。不需要终端、账户、Node.js 或 Python。所有者的电脑也无需保持运行。
+语言：[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md)
 
 ## 使用方法
 
-1. 打开[公开网站](https://moneysplit-e1m.pages.dev/)。
-2. 输入每位参与者的姓名和支出。额外付款、收款为可选项，两者总额必须完全相等。
-3. 选择可以多次转账的人和模式。严格模式下，只有选中的人可以进行多笔转账。
-4. 点击**计算结算**。
-5. 查看精确的转账说明。其他显示单位是近似值，并会如此标注。
+1. 输入每个人的姓名和支出。
+2. 可选：输入额外支付和额外收取。两者的总额必须相等。
+3. 把可以多次转账的人标记为多次转账优先者。
+4. 可选：打开严格偏好模式。这样只有被标记的人可以多次转账。
+5. 查看转账指令。用“复制结果”或“截图”分享。
 
-## 发布状态
+应用在浏览器中计算，不会把姓名和金额发送到服务器。
+支持的浏览器可以安装本应用。浏览器缓存全部应用文件后，可离线使用。
+人数较多时，搜索可能需要较长时间。点击“取消”即可停止。
 
-公开网址是 [https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)。这是 Cloudflare Pages 上的静态网站。当前公开版本不是 Tauri 安装包。
+## 工作原理
 
-`http://127.0.0.1:8080` 只是本机的本地预览，不是可分享的公开网址。
+应用把每个余额计算为以分为单位的整数。然后，精确搜索找出转账次数最少的方案。
+[docs/ALGORITHM.zh.md](docs/ALGORITHM.zh.md) 说明了每个步骤，并证明该方案最优。
+应用中的 **算法如何工作** 显示相同的内容。
 
-Cloudflare Pages 提供免费的静态网站托管。详见[官方文档](https://developers.cloudflare.com/pages/functions/pricing/)。本网站不需要 Functions、付费升级或购买域名。自定义域名另有注册与续费费用。
+## 开发与部署
 
-打开结果下方的 **算法如何工作**，即可查看完整计算方法与最优性证明。
-说明使用当前界面语言。应用文件完成缓存后，也可离线阅读。
-
-## 安装与离线
-
-安装 PWA 是可选的，并取决于浏览器。安装后可在单独的应用窗口中打开。
-
-离线使用要求应用文件已全部成功缓存。只加载了首页并不够。浏览器清理存储空间后，离线副本可能消失。Tauri 安装包留待后续开发。
-
-## 结算规则
-
-- 金额和倍数按精确小数计算，不使用浮点数金额。
-- 最终净余额分配到分，总和为零。输入相同的参与者之间也可能相差一分。平局按姓名的 Unicode 码点顺序决定，因此相同输入重新计算会得到相同结果。
-- 先最小化转账次数。次数相同时，减少未选中付款人的多笔转账负担。
-- **原始值**根据倍数应用前的金额独立计算，不将转换后的转账金额除以倍数来还原。
-- 严格模式下，每个视图分别显示方案或错误。原始值和倍数视图可能只有一个可行。
-
-## 耗时较长的搜索
-
-精确的最少转账搜索可能耗时很长。没有自动时间限制。用**取消**停止。取消不表示无法结算。
-
-## 开发者与部署人员
-
-需要 Node.js 22 或更新版本。
+需要 Node.js 22 或更高版本。
 
 ```bash
 npm ci
 npm test
 npm run build
-npm run preview
+npm run preview  # 在 http://127.0.0.1:8080 打开 dist/
 ```
 
-部署人员按以下步骤更新。当前网站使用 Cloudflare Pages 的[直接上传](https://developers.cloudflare.com/pages/get-started/direct-upload/)。
+要修改算法说明，请编辑 `scripts/algorithm-content.mjs`，然后运行 `npm run docs:algorithm`。
+该命令会同时更新应用和 `docs/ALGORITHM*.md`。两者不一致时，`npm test` 会失败。
 
-1. 在自己的电脑上运行 `npm run build`。
-2. 在 Cloudflare **Workers & Pages** 中打开现有 Pages 项目 `moneysplit`。
-3. 选择 **Create a new deployment**，然后选择 **Production**。
-4. 上传 `dist` 文件夹，或 `index.html` 位于压缩包根目录的 ZIP 文件。
-5. 保存并部署，然后分享公开网址。
-
-推送到 `main` 后，GitHub Actions 会在测试和构建完成后自动部署到 `moneysplit`。上面的步骤只在自动部署失败时使用。直接上传项目无法改为 Git 集成，但这种自动部署会保留同一个网址。设置见[英文 README](README.md)。
-
-Python 保留为参考实现和可选的本地 API。使用项目 `.venv`：
-
-```bash
-uv sync --extra test
-uv run pytest
-```
-
-## 许可证与详细信息
-
-截图库已包含在本地。许可证见 `web/vendor/html2canvas.LICENSE`。
-
-完整规则、API、部署步骤和验证命令见[英文 README](README.md)。
+推送到 `main` 后，GitHub Actions 会在测试和构建完成后部署到 Cloudflare Pages 项目 `moneysplit`。
+部署设置、Python 检查和本地 API 见[英文 README](README.md)。

@@ -77,6 +77,7 @@ const TRANSLATIONS = {
     "title.document": "Wire-Min-Splitter",
     "app.title": "Wire-Min-Splitter",
     "app.subtitle": "Enter party spending and optional fairness adjustments, then generate minimal transfer instructions.",
+    "link.github_title": "Source code on GitHub",
     "button.add_person": "Add Person",
     "label.people": "People",
     "button.apply_count": "Apply Count",
@@ -173,6 +174,7 @@ const TRANSLATIONS = {
     "field.spent": "spent",
     "field.extra_pay": "extra pay",
     "field.extra_get": "extra get",
+    // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "How the algorithm works",
     "algorithm.intro": "The tool finds the plan with the fewest transfers. First, it computes each person's balance in whole cents. Then an exact search finds the best plan. Section 6 proves that this plan is optimal.",
     "algorithm.h.input": "1. Check the input",
@@ -240,12 +242,14 @@ const TRANSLATIONS = {
     "algorithm.lim.3": "The solver has no time limit and no limit on the number of people. Use Cancel to stop a long search.",
     "algorithm.lim.4": "Cancel, or a memory or stack failure, is not a no-plan result. It does not show whether a plan exists.",
     "algorithm.lim.5": "Only a search that completes returns the optimal plan for the cent balances.",
-    "algorithm.source": "View the solver source code (JavaScript)"
+    "algorithm.source": "View the solver source code (JavaScript)",
+    // END generated algorithm text
   },
   "ko": {
     "title.document": "Wire-Min-Splitter (최소송금 N빵 계산기)",
     "app.title": "Wire-Min-Splitter (최소송금 N빵 계산기)",
     "app.subtitle": "파티 지출과 보정값을 입력하면 최소 송금 횟수 정산안을 계산합니다.",
+    "link.github_title": "GitHub의 소스 코드",
     "button.add_person": "인원 추가",
     "label.people": "인원",
     "button.apply_count": "인원 적용",
@@ -342,6 +346,7 @@ const TRANSLATIONS = {
     "field.spent": "지출",
     "field.extra_pay": "추가 부담",
     "field.extra_get": "추가 수령",
+    // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "알고리즘 작동 방식",
     "algorithm.intro": "이 도구는 송금 횟수가 가장 적은 계획을 찾습니다. 먼저 각 사람의 잔액을 센트 단위 정수로 계산합니다. 그다음 정확한 탐색으로 가장 좋은 계획을 찾습니다. 6절에서 이 계획이 최적임을 증명합니다.",
     "algorithm.h.input": "1. 입력 확인",
@@ -409,12 +414,14 @@ const TRANSLATIONS = {
     "algorithm.lim.3": "솔버에는 시간 제한도 인원 제한도 없습니다. 긴 탐색은 취소 버튼으로 멈춥니다.",
     "algorithm.lim.4": "취소, 또는 메모리·스택 실패는 '계획 없음' 결과가 아닙니다. 계획이 있는지 없는지를 알려 주지 않습니다.",
     "algorithm.lim.5": "탐색이 끝까지 완료되었을 때만 센트 잔액에 대한 최적 계획을 돌려줍니다.",
-    "algorithm.source": "솔버 소스 코드 보기 (JavaScript)"
+    "algorithm.source": "솔버 소스 코드 보기 (JavaScript)",
+    // END generated algorithm text
   },
   "ja": {
     "title.document": "Wire-Min-Splitter (最小送金バラバラ割り勘)",
     "app.title": "Wire-Min-Splitter (最小送金バラバラ割り勘)",
     "app.subtitle": "パーティーの支出と補正値を入力すると、送金回数が最小の精算案を計算します。",
+    "link.github_title": "GitHub のソースコード",
     "button.add_person": "参加者を追加",
     "label.people": "人数",
     "button.apply_count": "人数を適用",
@@ -511,6 +518,7 @@ const TRANSLATIONS = {
     "field.spent": "支出",
     "field.extra_pay": "追加負担",
     "field.extra_get": "追加受取",
+    // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "アルゴリズムの仕組み",
     "algorithm.intro": "このツールは、送金回数が最も少ない計画を探します。まず、各人の残高をセント単位の整数で計算します。次に、厳密な探索で最良の計画を見つけます。6 節で、この計画が最適であることを証明します。",
     "algorithm.h.input": "1. 入力の確認",
@@ -578,12 +586,14 @@ const TRANSLATIONS = {
     "algorithm.lim.3": "ソルバーに時間制限や人数制限はありません。長い探索は「キャンセル」で止めます。",
     "algorithm.lim.4": "キャンセル、またはメモリやスタックの失敗は、「計画なし」の結果ではありません。計画が存在するかどうかは示しません。",
     "algorithm.lim.5": "探索が最後まで完了したときだけ、セント残高に対する最適な計画を返します。",
-    "algorithm.source": "ソルバーのソースコードを見る (JavaScript)"
+    "algorithm.source": "ソルバーのソースコードを見る (JavaScript)",
+    // END generated algorithm text
   },
   "zh": {
     "title.document": "Wire-Min-Splitter (最少转账AA计算器)",
     "app.title": "Wire-Min-Splitter (最少转账AA计算器)",
     "app.subtitle": "输入聚会支出和调整项，生成转账次数最少的结算方案。",
+    "link.github_title": "GitHub 上的源代码",
     "button.add_person": "添加成员",
     "label.people": "人数",
     "button.apply_count": "应用人数",
@@ -680,6 +690,7 @@ const TRANSLATIONS = {
     "field.spent": "支出",
     "field.extra_pay": "额外支付",
     "field.extra_get": "额外收取",
+    // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "算法如何工作",
     "algorithm.intro": "本工具寻找转账次数最少的方案。首先，它把每个人的余额计算为以分为单位的整数。然后，它用精确搜索找到最佳方案。第 6 节证明该方案最优。",
     "algorithm.h.input": "1. 检查输入",
@@ -747,7 +758,8 @@ const TRANSLATIONS = {
     "algorithm.lim.3": "求解器没有时间限制，也没有人数限制。用“取消”停止长时间的搜索。",
     "algorithm.lim.4": "取消、内存不足或栈溢出都不是“无方案”结果。它们不能说明方案是否存在。",
     "algorithm.lim.5": "只有搜索完整结束时，才返回分余额下的最优方案。",
-    "algorithm.source": "查看求解器源代码（JavaScript）"
+    "algorithm.source": "查看求解器源代码（JavaScript）",
+    // END generated algorithm text
   }
 };
 
@@ -1174,11 +1186,12 @@ function inlineMath(source) {
       const node = mathElement("msub");
       node.append(previous, script);
       group.row.append(node);
-    } else if (token === "'") {
-      const prime = mathElement("mo", "′");
-      prime.setAttribute("lspace", "0");
-      prime.setAttribute("rspace", "0");
-      group.row.append(prime);
+    } else if (token === "'" || token === "/") {
+      // A prime and a slash take no extra space, as in TeX.
+      const tight = mathElement("mo", token === "'" ? "′" : token);
+      tight.setAttribute("lspace", "0");
+      tight.setAttribute("rspace", "0");
+      group.row.append(tight);
     } else if (/^\d/.test(token)) {
       group.row.append(mathElement("mn", token));
     } else if (/^[A-Za-zα-ω∅]/u.test(token)) {
@@ -1221,6 +1234,10 @@ function applyLanguage() {
 
   for (const element of document.querySelectorAll("[data-i18n-math]")) {
     setMathText(element, t(element.dataset.i18nMath));
+  }
+
+  for (const element of document.querySelectorAll("[data-math]")) {
+    element.replaceChildren(inlineMath(element.dataset.math));
   }
 
   for (const element of document.querySelectorAll("[data-i18n-placeholder]")) {

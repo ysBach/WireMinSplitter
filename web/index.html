@@ -19,6 +19,15 @@
           <h1 data-i18n="app.title">Wire-Min-Splitter</h1>
           <span id="offline-indicator" class="offline-badge hidden" aria-live="polite">Offline</span>
         </div>
+        <div class="top-links">
+        <a
+          class="github-link"
+          href="https://github.com/ysBach/WireMinSplitter"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Source code on GitHub"
+          data-i18n-title="link.github_title"
+        >GitHub</a>
         <div class="lang-switch" aria-label="Language">
           <button
             type="button"
@@ -52,6 +61,7 @@
           >
             中文
           </button>
+        </div>
         </div>
       </div>
       <p class="subhead" data-i18n="app.subtitle">
@@ -377,6 +387,7 @@
           </div>
         </div>
       </section>
+      <!-- BEGIN generated algorithm section: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm -->
       <details id="algorithm-details" class="card algorithm-details" data-html2canvas-ignore="true">
         <summary data-i18n="algorithm.title">How the algorithm works</summary>
         <div class="algorithm-body">
@@ -401,13 +412,13 @@
           </math>
         </div>
         <dl class="math-defs">
-          <dt><math><msub><mi>b</mi><mi>i</mi></msub></math></dt>
+          <dt data-math="b_i"></dt>
           <dd data-i18n-math="algorithm.bal.def.b">Exact balance of person $i$ in cents. It can be a fraction.</dd>
-          <dt><math><msub><mi>s</mi><mi>i</mi></msub><mo separator="true">,</mo><msub><mi>g</mi><mi>i</mi></msub><mo separator="true">,</mo><msub><mi>p</mi><mi>i</mi></msub></math></dt>
+          <dt data-math="s_i, g_i, p_i"></dt>
           <dd data-i18n-math="algorithm.bal.def.sgp">Spent, Extra Get, and Extra Pay of person $i$</dd>
-          <dt><math><mi>T</mi><mo separator="true">,</mo><mi>N</mi></math></dt>
+          <dt data-math="T, N"></dt>
           <dd data-i18n-math="algorithm.bal.def.tn">Total Spent and number of people</dd>
-          <dt><math><mi>m</mi></math></dt>
+          <dt data-math="m"></dt>
           <dd data-i18n-math="algorithm.bal.def.m">Multiplier</dd>
         </dl>
         <p data-i18n-math="algorithm.bal.sign">$T/N$ is the equal share of the spending. A person with $b_i &gt; 0$ gets money. A person with $b_i &lt; 0$ pays money.</p>
@@ -438,10 +449,10 @@
             <thead>
               <tr>
                 <th scope="col" data-i18n="algorithm.example.person">Person</th>
-                <th scope="col"><math><msub><mi>b</mi><mi>i</mi></msub></math></th>
-                <th scope="col"><math><mrow><mo>⌊</mo><msub><mi>b</mi><mi>i</mi></msub><mo>⌋</mo></mrow></math></th>
-                <th scope="col"><math><msub><mi>b</mi><mi>i</mi></msub><mo>−</mo><mrow><mo>⌊</mo><msub><mi>b</mi><mi>i</mi></msub><mo>⌋</mo></mrow></math></th>
-                <th scope="col"><math><msub><mi>c</mi><mi>i</mi></msub></math></th>
+                <th scope="col" data-math="b_i"></th>
+                <th scope="col" data-math="⌊b_i⌋"></th>
+                <th scope="col" data-math="b_i − ⌊b_i⌋"></th>
+                <th scope="col" data-math="c_i"></th>
               </tr>
             </thead>
             <tbody>
@@ -464,13 +475,13 @@
           </math>
         </div>
         <dl class="math-defs">
-          <dt><math><mi>C</mi></math></dt>
+          <dt data-math="C"></dt>
           <dd data-i18n-math="algorithm.goal.def.c">Number of transfers. The result shows it as Transactions.</dd>
-          <dt><math><mi>B</mi></math></dt>
+          <dt data-math="B"></dt>
           <dd data-i18n-math="algorithm.goal.def.b">Burden penalty. Each payer in $U$ adds 1 for each transfer after its first. The result shows it as Burden penalty.</dd>
-          <dt><math><msub><mi>d</mi><mi>i</mi></msub></math></dt>
+          <dt data-math="d_i"></dt>
           <dd data-i18n-math="algorithm.goal.def.d">Number of transfers that payer $i$ sends</dd>
-          <dt><math><mi>U</mi></math></dt>
+          <dt data-math="U"></dt>
           <dd data-i18n-math="algorithm.goal.def.u">Payers that are not marked Preferred Multi-Payer</dd>
         </dl>
         <p data-i18n-math="algorithm.goal.order">The tool picks the plan with the smallest $C$. If plans tie on $C$, it picks the plan with the smallest $B$. In the formulas, lexmin means this order.</p>
@@ -488,9 +499,9 @@
           </math>
         </div>
         <dl class="math-defs">
-          <dt><math><msub><mi>S</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></math></dt>
+          <dt data-math="S_ij"></dt>
           <dd data-i18n-math="algorithm.search.def.s">State after the move from payer $i$ to receiver $j$</dd>
-          <dt><math><msub><mi>e</mi><mi>i</mi></msub></math></dt>
+          <dt data-math="e_i"></dt>
           <dd data-i18n-math="algorithm.search.def.e">1 if payer $i$ is in $U$ and its sent flag is on, otherwise 0</dd>
         </dl>
         <p data-i18n-math="algorithm.search.base">An empty state $∅$ has the score $(0, 0)$. The search skips a move if the state after it has no valid plan. In strict preference mode, it also skips every move with $e_i = 1$.</p>
@@ -534,6 +545,7 @@
         <p><a data-i18n="algorithm.source" href="./solver.js" target="_blank" rel="noopener">View the solver source code (JavaScript)</a></p>
         </div>
       </details>
+      <!-- END generated algorithm section -->
     </main>
 
     <template id="row-template">
