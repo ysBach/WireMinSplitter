@@ -149,9 +149,13 @@ Amounts use a currency with two decimal places.
 Source amounts and multipliers use exact decimal arithmetic.
 The browser solver uses rational values and `BigInt` for money.
 
-```text
-ideal net = spent - total spent / participant count + extra_get - extra_pay
-```
+$$
+b_i = m \left( s_i - \frac{T}{N} + g_i - p_i \right), \qquad T = \sum_{j=1}^{N} s_j
+$$
+
+Here $b_i$ is the ideal net balance of participant $i$.
+$s_i$, $g_i$, and $p_i$ are the participant's spent, extra get, and extra pay amounts.
+$N$ is the participant count, and $m$ is the multiplier. The Original view uses $m = 1$.
 
 Positive net balances receive money. Negative net balances pay money.
 Pay/get totals must match before multiplication or rounding.

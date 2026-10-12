@@ -510,7 +510,13 @@ tr.drop-after td {
   margin: 0.5rem 0;
 }
 
-.algorithm-body ol {
+.algorithm-body h4 {
+  margin: 1rem 0 0.3rem;
+  font-size: 0.98rem;
+}
+
+.algorithm-body ol,
+.algorithm-body ul {
   margin: 0.4rem 0;
   padding-left: 1.5rem;
 }
@@ -519,26 +525,54 @@ tr.drop-after td {
   margin: 0.3rem 0;
 }
 
-.algorithm-body pre {
+.algorithm-body math {
+  font-size: 1.08em;
+  overflow-wrap: normal;
+}
+
+.math-block {
+  margin: 0.7rem 0;
+  padding: 0.25rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.math-block math {
+  font-size: 1.15em;
+}
+
+.math-defs {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.3rem 1rem;
+  margin: 0.5rem 0 0.8rem;
+  padding-left: 1.5rem;
+}
+
+.math-defs dd {
+  margin: 0;
+}
+
+.algorithm-table-scroll {
   margin: 0.5rem 0;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #f3f4f6;
-  font-family: "SF Mono", "Cascadia Mono", "Menlo", "Consolas", monospace;
-  font-size: 0.88rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-x: auto;
+}
+
+.algorithm-body table.algorithm-example {
+  width: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.algorithm-body .algorithm-example th,
+.algorithm-body .algorithm-example td {
+  padding: 0.35rem 0.9rem;
+  text-align: right;
+}
+
+.algorithm-body .algorithm-example th:first-child {
+  text-align: left;
 }
 
 .algorithm-body a {
   color: var(--accent);
-}
-
-@media (max-width: 760px) {
-  .algorithm-body pre {
-    font-size: 0.82rem;
-    padding: 0.6rem 0.65rem;
-  }
 }
