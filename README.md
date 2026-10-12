@@ -70,6 +70,24 @@ Installation support depends on the browser and operating system.
 These steps are for the maintainer. Users do not perform them.
 The live site uses Cloudflare Pages Direct Upload in the existing project `moneysplit`.
 
+### Automatic deployment
+
+GitHub Actions deploys the site after each push to `main`.
+The `Release checks` workflow runs the tests and builds `dist`.
+If every check passes, Wrangler uploads `dist` to `moneysplit`.
+The job fails if Cloudflare records a preview deployment instead of a production deployment.
+
+The workflow reads two repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | API token with the permission **Account → Cloudflare Pages → Edit** |
+| `CLOUDFLARE_ACCOUNT_ID` | ID of the Cloudflare account that owns `moneysplit` |
+
+### Manual deployment
+
+Use these steps only if the workflow cannot deploy.
+
 1. Run `npm run build` on your computer.
 2. Open Cloudflare **Workers & Pages**. Select the Pages project `moneysplit`.
 3. Select **Create a new deployment**. Choose **Production**.
@@ -77,11 +95,13 @@ The live site uses Cloudflare Pages Direct Upload in the existing project `money
 5. Save and deploy. Share the live URL.
 
 A Direct Upload project cannot change to Git integration.
-Automatic Git deployment needs a new project (next section).
+The workflow above gives automatic deployment without that change, and the URL stays the same.
 Cloudflare publishes only `dist`. The website needs no Python server or server secrets.
 The `_headers` file defines the browser security policy.
 
 ### Optional: new Git-connected project
+
+A Git-connected project gets a new `pages.dev` URL. The current URL stays with `moneysplit`.
 
 1. Push the reviewed release to GitHub.
 2. Open Cloudflare's **Workers & Pages** page.

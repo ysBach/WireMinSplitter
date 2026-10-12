@@ -30,3 +30,22 @@ jobs:
           name: static-website
           path: dist/
           if-no-files-found: error
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=moneysplit --branch=main
+      - name: Require a production deployment
+        if: steps.deploy.outcome == 'success'
+        env:
+          PAGES_ENVIRONMENT: ${{ steps.deploy.outputs.pages-environment }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          echo "Cloudflare deployment: $DEPLOYMENT_URL ($PAGES_ENVIRONMENT)"
+          if [ "$PAGES_ENVIRONMENT" != "production" ]; then
+            echo "::error::Cloudflare recorded a $PAGES_ENVIRONMENT deployment. Set the production branch of the moneysplit project to main."
+            exit 1
+          fi

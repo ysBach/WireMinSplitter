@@ -62,7 +62,7 @@ npm run preview
 4. `dist` 폴더 또는 `index.html`이 ZIP 최상위에 있는 ZIP 파일을 업로드합니다.
 5. 저장하고 배포한 뒤 공개 URL을 공유합니다.
 
-직접 업로드 프로젝트는 Git 연동으로 바꿀 수 없습니다. 자동 Git 배포는 새 프로젝트가 필요합니다. 절차는 [영문 README](README.md)를 따르세요.
+`main`에 푸시하면 GitHub Actions가 테스트와 빌드를 마친 뒤 `moneysplit`에 자동으로 배포합니다. 위 절차는 자동 배포가 실패할 때만 씁니다. 직접 업로드 프로젝트는 Git 연동으로 바꿀 수 없지만, 이 자동 배포는 같은 URL을 유지합니다. 설정은 [영문 README](README.md)를 따르세요.
 
 Python은 참고 구현과 선택적 로컬 API입니다. 프로젝트 `.venv`를 사용합니다.
 

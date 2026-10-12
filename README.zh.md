@@ -62,7 +62,7 @@ npm run preview
 4. 上传 `dist` 文件夹，或 `index.html` 位于压缩包根目录的 ZIP 文件。
 5. 保存并部署，然后分享公开网址。
 
-直接上传项目无法改为 Git 集成。自动 Git 部署需要新项目。步骤见[英文 README](README.md)。
+推送到 `main` 后，GitHub Actions 会在测试和构建完成后自动部署到 `moneysplit`。上面的步骤只在自动部署失败时使用。直接上传项目无法改为 Git 集成，但这种自动部署会保留同一个网址。设置见[英文 README](README.md)。
 
 Python 保留为参考实现和可选的本地 API。使用项目 `.venv`：
 
