@@ -3,13 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="description" content="Enter party spending and optional fairness adjustments, then generate minimal transfer instructions." />
     <title>Wire-Min-Splitter</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260228p" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="container">
       <div class="page-top">
-        <h1 data-i18n="app.title">Wire-Min-Splitter</h1>
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <h1 data-i18n="app.title">Wire-Min-Splitter</h1>
+          <span id="offline-indicator" class="offline-badge hidden" aria-live="polite">Offline</span>
+        </div>
         <div class="lang-switch" aria-label="Language">
           <button
             type="button"
@@ -49,6 +58,16 @@
         Enter party spending and optional fairness adjustments, then generate
         minimal transfer instructions.
       </p>
+      <p class="credit">
+        Developer:
+        <a
+          href="https://github.com/ysBach"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          @ysBach (Github)
+        </a>
+      </p>
 
       <section class="card">
         <div class="toolbar">
@@ -64,6 +83,7 @@
                 min="1"
                 step="1"
                 value="3"
+                aria-label="People count"
               />
             </label>
             <button
@@ -78,7 +98,7 @@
           <div class="toolbar-right">
             <label class="field-inline" for="name-reset-mode">
               <span data-i18n="label.name_reset">Name Reset</span>
-              <select id="name-reset-mode">
+              <select id="name-reset-mode" aria-label="Name reset mode">
                 <option value="abcd" selected>ABCD</option>
                 <option value="empty">Empty</option>
                 <option value="human_int">Human 01, 02</option>
@@ -98,6 +118,7 @@
                 type="checkbox"
                 checked
                 data-i18n-title="tooltip.enable_drag"
+                aria-label="Enable drag reorder"
               />
               <span data-i18n="label.enable_drag">Enable drag reorder</span>
             </label>
@@ -106,6 +127,7 @@
                 id="strict-preference"
                 type="checkbox"
                 data-i18n-title="tooltip.strict_preference"
+                aria-label="Strict preference mode"
               />
               <span data-i18n="label.strict_preference">
                 Strict preference mode
@@ -114,12 +136,12 @@
           </div>
         </div>
 
-        <table id="participants">
+        <table id="participants" aria-label="Participants table">
           <thead>
             <tr>
-              <th></th>
-              <th data-i18n="table.name">Name</th>
-              <th class="repeat-col">
+              <th scope="col"></th>
+              <th scope="col" data-i18n="table.name">Name</th>
+              <th scope="col" class="repeat-col">
                 <span class="col-head">
                   <span data-i18n="table.repeat">Repeat</span>
                   <label
@@ -130,12 +152,13 @@
                       id="enable-repeat"
                       type="checkbox"
                       data-i18n-title="tooltip.enable_repeat"
+                      aria-label="Enable Repeat editing"
                     />
                   </label>
                 </span>
               </th>
-              <th data-i18n="table.spent">Spent</th>
-              <th class="extra-pay-col">
+              <th scope="col" data-i18n="table.spent">Spent</th>
+              <th scope="col" class="extra-pay-col">
                 <span class="col-head">
                   <span data-i18n="table.extra_pay">Extra Pay</span>
                   <label
@@ -146,11 +169,12 @@
                       id="enable-extra-pay"
                       type="checkbox"
                       data-i18n-title="tooltip.enable_extra_pay"
+                      aria-label="Enable Extra Pay editing"
                     />
                   </label>
                 </span>
               </th>
-              <th class="extra-get-col">
+              <th scope="col" class="extra-get-col">
                 <span class="col-head">
                   <span data-i18n="table.extra_get">Extra Get</span>
                   <label
@@ -161,12 +185,13 @@
                       id="enable-extra-get"
                       type="checkbox"
                       data-i18n-title="tooltip.enable_extra_get"
+                      aria-label="Enable Extra Get editing"
                     />
                   </label>
                 </span>
               </th>
-              <th data-i18n="table.preferred_multi">Preferred Multi-Payer</th>
-              <th></th>
+              <th scope="col" data-i18n="table.preferred_multi">Preferred Multi-Payer</th>
+              <th scope="col"></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -182,11 +207,10 @@
               <span data-i18n="label.multiplier">Multiplier</span>
               <input
                 id="multiplier"
-                type="number"
-                min="0.00000001"
-                step="0.0001"
+                type="text"
                 value="1"
                 data-i18n-title="tooltip.multiplier"
+                aria-label="Multiplier"
               />
             </label>
             <label
@@ -195,7 +219,7 @@
               data-i18n-title="tooltip.number_style"
             >
               <span data-i18n="label.number_style">Number Format</span>
-              <select id="number-style" data-i18n-title="tooltip.number_style">
+              <select id="number-style" data-i18n-title="tooltip.number_style" aria-label="Number format style">
                 <option value="comma_period" data-i18n="option.comma_period">
                   1,000.00
                 </option>
@@ -218,15 +242,17 @@
                   type="button"
                   class="secondary rounding-arrow"
                   data-i18n-title="tooltip.rounding_left"
+                  aria-label="Decrease before-multiplier rounding resolution"
                 >
                   ←
                 </button>
-                <output id="rounding-before-display">0.01</output>
+                <output id="rounding-before-display" aria-live="polite">0.01</output>
                 <button
                   id="rounding-before-right"
                   type="button"
                   class="secondary rounding-arrow"
                   data-i18n-title="tooltip.rounding_right"
+                  aria-label="Increase before-multiplier rounding resolution"
                 >
                   →
                 </button>
@@ -246,15 +272,17 @@
                   type="button"
                   class="secondary rounding-arrow"
                   data-i18n-title="tooltip.rounding_left"
+                  aria-label="Decrease after-multiplier rounding resolution"
                 >
                   ←
                 </button>
-                <output id="rounding-after-display">0.01</output>
+                <output id="rounding-after-display" aria-live="polite">0.01</output>
                 <button
                   id="rounding-after-right"
                   type="button"
                   class="secondary rounding-arrow"
                   data-i18n-title="tooltip.rounding_right"
+                  aria-label="Increase after-multiplier rounding resolution"
                 >
                   →
                 </button>
@@ -274,14 +302,79 @@
       </section>
 
       <section class="card">
-        <h2 data-i18n="section.result">Result</h2>
-        <p id="error" class="error hidden"></p>
+        <div class="result-head">
+          <h2 data-i18n="section.result">Result</h2>
+          <div class="result-tools">
+            <button
+              id="copy-results"
+              type="button"
+              class="secondary compact"
+              data-i18n="button.copy_results"
+              data-i18n-title="tooltip.copy_results"
+            >
+              Copy Results
+            </button>
+            <button
+              id="screenshot-results"
+              type="button"
+              class="secondary compact"
+              data-i18n="button.screenshot_results"
+              data-i18n-title="tooltip.screenshot_results"
+            >
+              Screenshot
+            </button>
+          </div>
+        </div>
+
+        <div id="calculating-indicator" class="calculating-banner hidden">
+          <span class="calculating-text" role="status" aria-live="polite" data-i18n="warning.calculating_long">
+            Finding the fewest transfers can take a long time. You can cancel.
+          </span>
+          <span id="calculating-timer" class="calculating-timer" aria-hidden="true"></span>
+          <button id="cancel-calculate" type="button" class="secondary compact" data-i18n="button.cancel">
+            Cancel
+          </button>
+        </div>
+
+        <p id="result-tools-feedback" class="result-feedback hidden" aria-live="polite"></p>
+        <p id="error" class="error hidden" role="alert" aria-live="assertive"></p>
         <div id="result" class="hidden">
-          <p id="summary"></p>
-          <h3 data-i18n="section.net_balances">Net Balances</h3>
-          <ul id="balances"></ul>
-          <h3 data-i18n="section.transfers">Transfers</h3>
-          <ol id="transfers"></ol>
+          <p id="rounding-notice" class="rounding-notice hidden" data-i18n="notice.rounding">
+            Note: Due to nearest-cent allocation, identical participants may differ by 0.01.
+          </p>
+          <p id="approximate-notice" class="approximate-notice hidden" data-i18n="notice.approximate_display">
+            Approximate display only (not exact payment instructions; sums may not conserve).
+          </p>
+
+          <!-- Single panel when multiplier == 1 -->
+          <div id="single-result-panel">
+            <p id="summary"></p>
+            <h3 data-i18n="section.net_balances">Net Balances</h3>
+            <ul id="balances"></ul>
+            <h3 data-i18n="section.transfers">Transfers</h3>
+            <ol id="transfers"></ol>
+          </div>
+
+          <!-- Dual panel when multiplier != 1 and data.original is present -->
+          <div id="dual-result-panel" class="hidden">
+            <div class="result-plan-card">
+              <h3 class="plan-heading" data-i18n="heading.original_plan">Original Plan (Before Multiplier)</h3>
+              <p id="original-summary"></p>
+              <h4 data-i18n="section.net_balances">Net Balances</h4>
+              <ul id="original-balances"></ul>
+              <h4 data-i18n="section.transfers">Transfers</h4>
+              <ol id="original-transfers"></ol>
+            </div>
+
+            <div class="result-plan-card" style="margin-top: 1.2rem; padding-top: 1rem; border-top: 1px dashed var(--line);">
+              <h3 class="plan-heading" data-i18n="heading.multiplied_plan">Multiplied Plan (After Multiplier)</h3>
+              <p id="multiplied-summary"></p>
+              <h4 data-i18n="section.net_balances">Net Balances</h4>
+              <ul id="multiplied-balances"></ul>
+              <h4 data-i18n="section.transfers">Transfers</h4>
+              <ol id="multiplied-transfers"></ol>
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -316,12 +409,12 @@
             data-i18n-title="tooltip.repeat"
           />
         </td>
-        <td><input type="number" class="spent" step="0.01" value="0" /></td>
+        <td><input type="text" class="spent" value="0" inputmode="decimal" /></td>
         <td class="extra-pay-col">
-          <input type="number" class="extra-pay" step="0.01" value="0" />
+          <input type="text" class="extra-pay" value="0" inputmode="decimal" />
         </td>
         <td class="extra-get-col">
-          <input type="number" class="extra-get" step="0.01" value="0" />
+          <input type="text" class="extra-get" value="0" inputmode="decimal" />
         </td>
         <td class="center">
           <input
@@ -338,6 +431,8 @@
       </tr>
     </template>
 
-    <script src="/static/app.js?v=20260228p"></script>
+    <script src="./vendor/html2canvas.min.js"></script>
+    <script src="./app.js"></script>
   </body>
 </html>
+

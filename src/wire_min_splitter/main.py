@@ -1,77 +1,81 @@
+"""FastAPI reference server for the settlement solver and the static web app."""
+
 from __future__ import annotations
 
-from decimal import Decimal
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    field_validator,
+)
 
 from wire_min_splitter.optimizer import (
-    PartyMember,
     SettlementError,
-    cents_to_decimal,
-    solve_settlement,
-    to_cents,
+    SettlementResourceError,
+    solve_payload,
 )
 
 
-BASE_DIR = Path(__file__).resolve().parent
+def find_web_dir() -> Path:
+    """Return the web app directory: the packaged copy, else the repository one."""
+    package_dir = Path(__file__).resolve().parent
+    for candidate in (package_dir / "web", package_dir.parents[1] / "web"):
+        if candidate.is_dir():
+            return candidate
+    raise RuntimeError("The web directory was not found.")
+
+
+WEB_DIR = find_web_dir()
+
+
+Money = StrictStr | StrictInt
 
 
 class ParticipantInput(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    spent: Decimal = Decimal("0")
-    extra_pay: Decimal = Decimal("0")
-    extra_get: Decimal = Decimal("0")
+    spent: Money = "0"
+    extra_pay: Money = "0"
+    extra_get: Money = "0"
 
     @field_validator("name")
     @classmethod
     def validate_name(cls, value: str) -> str:
-        trimmed = value.strip()
-        if not trimmed:
+        if not value.strip():
             raise ValueError("name must be non-empty")
-        return trimmed
+        return value
 
     @field_validator("spent", "extra_pay", "extra_get", mode="before")
     @classmethod
     def empty_string_to_zero(cls, value: object) -> object:
-        if value == "":
+        if isinstance(value, str) and not value.strip():
             return "0"
         return value
 
 
 class SettlementRequest(BaseModel):
+    """Request body. Money is a decimal string or an exact integer, never a float."""
+
     people: list[ParticipantInput] = Field(min_length=1)
     preferred_multi_payers: list[str] = Field(default_factory=list)
-    strict_preference: bool = False
-    multiplier: Decimal = Decimal("1")
+    strict_preference: StrictBool = False
+    multiplier: Money = "1"
 
     @field_validator("multiplier", mode="before")
     @classmethod
     def empty_multiplier_to_one(cls, value: object) -> object:
-        if value == "":
+        if isinstance(value, str) and not value.strip():
             return "1"
-        return value
-
-    @field_validator("multiplier")
-    @classmethod
-    def validate_multiplier(cls, value: Decimal) -> Decimal:
-        if value <= 0:
-            raise ValueError("multiplier must be greater than 0")
         return value
 
 
 app = FastAPI(title="Wire-Min-Splitter")
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/api/health")
@@ -81,58 +85,28 @@ async def healthcheck() -> dict[str, str]:
 
 @app.post("/api/settle")
 async def settle(payload: SettlementRequest) -> dict[str, object]:
-    multiplier = payload.multiplier
-    members = [
-        PartyMember(
-            name=item.name,
-            spent_cents=to_cents(item.spent * multiplier),
-            extra_pay_cents=to_cents(item.extra_pay * multiplier),
-            extra_get_cents=to_cents(item.extra_get * multiplier),
-        )
-        for item in payload.people
-    ]
-
+    """Solve a settlement in a worker thread (the search can be CPU heavy)."""
+    data = {
+        "people": [
+            {
+                "name": item.name,
+                "spent": str(item.spent),
+                "extra_pay": str(item.extra_pay),
+                "extra_get": str(item.extra_get),
+            }
+            for item in payload.people
+        ],
+        "preferred_multi_payers": payload.preferred_multi_payers,
+        "strict_preference": payload.strict_preference,
+        "multiplier": str(payload.multiplier),
+    }
     try:
-        result = solve_settlement(
-            members=members,
-            preferred_multi_payers=payload.preferred_multi_payers,
-            strict_preference=payload.strict_preference,
-        )
+        return await run_in_threadpool(solve_payload, data)
+    except SettlementResourceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except SettlementError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    balances_json = []
-    for balance in result.balances:
-        amount = cents_to_decimal(balance.cents)
-        if balance.cents < 0:
-            role = "payer"
-        elif balance.cents > 0:
-            role = "receiver"
-        else:
-            role = "settled"
 
-        balances_json.append(
-            {
-                "name": balance.name,
-                "net": f"{amount:.2f}",
-                "role": role,
-            }
-        )
-
-    transfers_json = [
-        {
-            "from": transfer.payer,
-            "to": transfer.receiver,
-            "amount": f"{cents_to_decimal(transfer.cents):.2f}",
-        }
-        for transfer in result.transfers
-    ]
-
-    return {
-        "summary": {
-            "transactions": result.transaction_count,
-            "burden_penalty": result.burden_penalty,
-        },
-        "balances": balances_json,
-        "transfers": transfers_json,
-    }
+# Mounted last so that the /api routes above take precedence.
+app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")

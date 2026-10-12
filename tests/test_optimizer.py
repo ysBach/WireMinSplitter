@@ -1,130 +1,173 @@
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from wire_min_splitter.optimizer import (
     NetBalance,
     PartyMember,
     SettlementError,
+    SettlementInfeasibleError,
+    SettlementResourceError,
     compute_net_balances,
     optimize_transfers,
+    solve_payload,
     solve_settlement,
     to_cents,
 )
 
 
-def test_compute_net_balances_distributes_remainder_cents() -> None:
+def _balances(cents: list[int]) -> list[NetBalance]:
+    return [NetBalance(name=f"n{i}", cents=c) for i, c in enumerate(cents)]
+
+
+def test_balances_use_balanced_nearest_cent_allocation() -> None:
     members = [
         PartyMember(name="Alice", spent_cents=10_000),
-        PartyMember(name="Bob", spent_cents=0),
-        PartyMember(name="Cara", spent_cents=0),
+        PartyMember(name="Bob"),
+        PartyMember(name="Cara"),
     ]
 
-    balances = compute_net_balances(members)
-    amounts = {item.name: item.cents for item in balances}
+    amounts = {b.name: b.cents for b in compute_net_balances(members)}
 
-    assert amounts["Alice"] == 6_666
-    assert amounts["Bob"] == -3_333
-    assert amounts["Cara"] == -3_333
+    assert amounts == {"Alice": 6_667, "Bob": -3_333, "Cara": -3_334}
+
+
+def test_identical_inputs_may_differ_by_one_cent_only() -> None:
+    members = [PartyMember(name="human 01", spent_cents=15_100)] + [
+        PartyMember(name=f"human {i:02d}") for i in range(2, 10)
+    ]
+
+    amounts = {b.name: b.cents for b in compute_net_balances(members)}
+
+    assert amounts["human 01"] == 13_423
+    assert amounts["human 02"] == -1_677
+    assert {amounts[f"human {i:02d}"] for i in range(3, 10)} == {-1_678}
     assert sum(amounts.values()) == 0
 
 
-def test_compute_net_balances_equalizes_identical_inputs() -> None:
+def test_balances_do_not_depend_on_row_order() -> None:
     members = [
-        PartyMember(name="human 01", spent_cents=15_100),
-        PartyMember(name="human 02", spent_cents=0),
-        PartyMember(name="human 03", spent_cents=0),
-        PartyMember(name="human 04", spent_cents=0),
-        PartyMember(name="human 05", spent_cents=0),
-        PartyMember(name="human 06", spent_cents=0),
-        PartyMember(name="human 07", spent_cents=0),
-        PartyMember(name="human 08", spent_cents=0),
-        PartyMember(name="human 09", spent_cents=0),
+        PartyMember(name=n, spent_cents=s) for n, s in [("a", 1), ("b", 0), ("c", 0)]
     ]
 
-    balances = compute_net_balances(members)
-    amounts = {item.name: item.cents for item in balances}
-
-    assert amounts["human 01"] == 13_424
-    assert {amounts[f"human {idx:02d}"] for idx in range(2, 10)} == {-1_678}
-    assert sum(amounts.values()) == 0
+    expected = {b.name: b.cents for b in compute_net_balances(members)}
+    for order in itertools.permutations(members):
+        assert {b.name: b.cents for b in compute_net_balances(order)} == expected
 
 
 def test_optimize_transfers_minimizes_transaction_count() -> None:
-    balances = [
-        NetBalance(name="A", cents=-5_000),
-        NetBalance(name="B", cents=-3_000),
-        NetBalance(name="C", cents=4_000),
-        NetBalance(name="D", cents=4_000),
-    ]
-
-    transfers, penalty = optimize_transfers(balances)
+    transfers, penalty = optimize_transfers(_balances([-5_000, -3_000, 4_000, 4_000]))
 
     assert len(transfers) == 3
     assert penalty == 1
-
-    total_sent = sum(item.cents for item in transfers)
-    assert total_sent == 8_000
+    assert sum(t.cents for t in transfers) == 8_000
 
 
-def test_preferred_multi_payer_is_selected_when_strict() -> None:
-    members = [
-        PartyMember(name="Alice", spent_cents=0),
-        PartyMember(name="Bob", spent_cents=0),
-        PartyMember(name="R1", spent_cents=12_000),
-        PartyMember(name="R2", spent_cents=9_000),
-        PartyMember(name="R3", spent_cents=9_000),
-    ]
-
-    result = solve_settlement(
-        members,
-        preferred_multi_payers=["Alice"],
-        strict_preference=True,
+@pytest.mark.parametrize("strict", [False, True])
+def test_preferred_payer_splits_for_free(strict: bool) -> None:
+    transfers, penalty = optimize_transfers(
+        _balances([-200, -200, -200, 300, 300]), ["n0"], strict
     )
 
-    outgoing_counts = {"Alice": 0, "Bob": 0}
-    for transfer in result.transfers:
-        if transfer.payer in outgoing_counts:
-            outgoing_counts[transfer.payer] += 1
-
-    assert len(result.transfers) == 3
-    assert outgoing_counts["Alice"] == 2
-    assert outgoing_counts["Bob"] == 1
+    assert len(transfers) == 4
+    assert penalty == 0
+    assert sum(1 for t in transfers if t.payer == "n0") == 2
 
 
-def test_strict_preference_without_allowed_multi_payer_can_fail() -> None:
-    members = [
-        PartyMember(name="Alice", spent_cents=0),
-        PartyMember(name="Bob", spent_cents=0),
-        PartyMember(name="R1", spent_cents=12_000),
-        PartyMember(name="R2", spent_cents=9_000),
-        PartyMember(name="R3", spent_cents=9_000),
+def test_strict_preference_without_preferred_payer_is_infeasible() -> None:
+    with pytest.raises(SettlementError, match="No feasible settlement"):
+        optimize_transfers(_balances([-200, -200, -200, 300, 300]), [], True)
+
+
+def test_non_payer_preferred_name_is_ignored() -> None:
+    result = solve_settlement(
+        [
+            PartyMember(name="Alice", spent_cents=12_000),
+            PartyMember(name="Bob"),
+            PartyMember(name="Cara"),
+        ],
+        preferred_multi_payers=["Alice"],
+    )
+
+    assert result.transaction_count == 2
+
+
+def test_one_creditor_with_many_debtors_needs_no_deep_recursion() -> None:
+    members = [PartyMember(name="Payer", spent_cents=100_100)] + [
+        PartyMember(name=f"p{i}") for i in range(1000)
     ]
 
-    with pytest.raises(SettlementError, match="No feasible settlement"):
-        solve_settlement(
-            members,
-            preferred_multi_payers=[],
-            strict_preference=True,
-        )
+    assert solve_settlement(members).transaction_count == 1000
 
 
-def test_to_cents_rejects_invalid_value() -> None:
+def test_to_cents_rounds_half_away_and_rejects_float_and_text() -> None:
+    assert to_cents("0.005") == 1
+    assert to_cents("-0.005") == -1
+    with pytest.raises(SettlementError, match="Invalid monetary value"):
+        to_cents(1.5)  # type: ignore[arg-type]
     with pytest.raises(SettlementError, match="Invalid monetary value"):
         to_cents("not-a-number")
 
 
-def test_non_payer_preferred_name_is_ignored() -> None:
-    members = [
-        PartyMember(name="Alice", spent_cents=12_000),
-        PartyMember(name="Bob", spent_cents=0),
-        PartyMember(name="Cara", spent_cents=0),
+def test_payload_conserves_adjustments_before_the_multiplier() -> None:
+    people = [{"name": "A", "extra_get": "0.004"}, {"name": "B", "extra_pay": "0.003"}]
+
+    with pytest.raises(SettlementError, match="Infeasible adjustments"):
+        solve_payload({"people": people, "multiplier": "1000"})
+
+
+def test_payload_original_is_solved_without_the_multiplier() -> None:
+    people = [{"name": "A", "spent": "10.01"}, {"name": "B"}, {"name": "C"}]
+
+    multiplied = solve_payload({"people": people, "multiplier": "1.005"})
+    plain = solve_payload({"people": people})
+
+    assert multiplied["original"] == plain
+    assert "original" not in plain
+    assert multiplied["rounding_notice"] is True
+
+
+def test_payload_rejects_non_boolean_strict_and_float_money() -> None:
+    with pytest.raises(SettlementError, match="strict_preference"):
+        solve_payload({"people": [{"name": "A"}], "strict_preference": "false"})
+    with pytest.raises(SettlementError, match="Invalid monetary value"):
+        solve_payload({"people": [{"name": "A", "spent": 1.5}]})
+
+
+def test_huge_values_stay_exact() -> None:
+    result = solve_payload({"people": [{"name": "A", "spent": "1e26"}, {"name": "B"}]})
+
+    assert result["transfers"] == [
+        {"from": "B", "to": "A", "amount": "50000000000000000000000000.00"}
     ]
 
-    result = solve_settlement(
-        members,
-        preferred_multi_payers=["Alice"],
-        strict_preference=False,
-    )
 
-    assert result.transaction_count == 2
+def test_unreadably_long_integer_is_a_resource_error() -> None:
+    with pytest.raises(SettlementResourceError):
+        solve_payload({"people": [{"name": "A", "spent": "9" * 5000}, {"name": "B"}]})
+
+
+def _strict_payload(spent: list[int], multiplier: str) -> dict[str, object]:
+    return {
+        "people": [{"name": f"P{i}", "spent": str(s)} for i, s in enumerate(spent)],
+        "multiplier": multiplier,
+        "strict_preference": True,
+    }
+
+
+def test_each_view_shows_its_own_plan_or_error() -> None:
+    converted_only = solve_payload(_strict_payload([2, 3, 3], ".01"))
+    assert "error" not in converted_only
+    assert list(converted_only["original"]) == ["error"]  # type: ignore[call-overload]
+    assert converted_only["original"]["error"]["resource"] is False  # type: ignore[index]
+
+    original_only = solve_payload(_strict_payload([3, 2, 9, 1, 5, 0], "1.1"))
+    assert list(original_only) == ["error", "original"]
+    assert original_only["original"]["transfers"]  # type: ignore[index]
+
+
+def test_infeasible_without_multiplier_raises_infeasible_error() -> None:
+    with pytest.raises(SettlementInfeasibleError):
+        solve_payload(_strict_payload([2, 3, 3], "1"))

@@ -1,85 +1,21 @@
-# 最少转账AA计算器 (Wire-Min-Splitter)
+# 最少转账AA计算器 (MoneySplit / Wire-Min-Splitter)
 
-这是一个 Python Web 应用，用于聚会AA结算，在保证公平的前提下**尽量减少转账次数**。
+运行 `npm run build` 和 `npm run preview`，打开 <http://127.0.0.1:8080>。
 
-英文文档: [README.md](README.md)
-
-## 主要功能
-
-- 最少转账次数优化（`payer -> receiver`）
-- 多次转账负担偏好:
-  - 软偏好（同等解时最小化负担惩罚）
-  - 严格偏好模式
-- 每人输入:
-  - `spent`（默认 `0`）
-  - `extra_pay`（默认 `0`）
-  - `extra_get`（默认 `0`）
-- 每行支持 `repeat`（默认 `1`），可一次表示多个相同参与者
-- 行拖拽排序（默认开启）
-- 人数输入框 + 应用按钮
-- 姓名批量重置:
-  - 清空
-  - `human 01, 02, ...`
-  - 字母（`A, B, C, ...`）
-- 覆盖姓名前弹出确认警告
-- UI 语言切换: 英语 / 韩语 / 日语 / 中文
+这是静态网站和可安装的 PWA。结算在浏览器内计算，不向计算服务器发送姓名和金额。首次成功加载后可离线使用。桌面安装需要支持的浏览器。Tauri 安装包留待后续开发。
 
 ## 结算规则
 
-按均摊计算:
+- 均摊支出并计算额外付款、收款。原始额外付款总额必须与额外收款总额完全相等。
+- 金额与倍数按精确小数计算。最终净余额分配到分，保证总额为零。相同输入也可能相差一分。平局按姓名决定。
+- 原始值根据倍数应用前的金额独立计算，不将转换后的转账金额除以倍数来还原。
+- 先最小化转账次数，再减少未选中付款人的多笔转账负担。严格模式只允许选中的人进行多笔转账。
+- 最少转账搜索可能涉及大量组合，因此可能耗时很长。没有自动时间限制，可用**取消**停止。分以外的显示单位是近似显示。
 
-`net = spent - share + extra_get - extra_pay`
+## 托管与验证
 
-- `net > 0`: 应收
-- `net < 0`: 应付
-- `net = 0`: 已结清
+使用 Node.js 22 或更新版本运行 `npm ci`、`npm test`、`npm run build`。Cloudflare Pages 设置：框架 **None**，构建命令 **npm run build**，输出目录 **dist**。可通过免费提供的网址公开访问。自定义域名需要支付注册与续费费用。
 
-可行性条件:
+Python 保留为参考实现和可选的本地 API。在项目 `.venv` 中运行 `uv sync --extra test` 和 `uv run pytest`。
 
-`sum(extra_get) == sum(extra_pay)`
-
-## 小数分配公平策略
-
-为避免因行顺序导致的1分差异:
-
-- 输入完全相同的人在可行时会被归一化为相同净额
-- 剩余1分误差由主要收款人/付款人吸收
-
-示例: 9人中1人支出 `151`，其余为0 -> 其余8人转账金额一致
-
-## 运行
-
-```bash
-uv sync
-uv run uvicorn wire_min_splitter.main:app --app-dir src --reload
-```
-
-打开: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-
-## 测试
-
-```bash
-uv run pytest
-```
-
-## API
-
-`POST /api/settle`
-
-请求示例:
-
-```json
-{
-  "people": [
-    { "name": "Alice", "spent": "120.00", "extra_pay": "0", "extra_get": "0" },
-    { "name": "Bob", "spent": "0.00", "extra_pay": "0", "extra_get": "0" }
-  ],
-  "preferred_multi_payers": ["Alice"],
-  "strict_preference": false
-}
-```
-
-返回:
-- `summary`（`transactions`, `burden_penalty`）
-- `balances`（name, net, role）
-- `transfers`（`from`, `to`, `amount`）
+完整规则、部署步骤和验证命令见[英文 README](README.md)。此前强制相同输入得到相同余额的规则已改为总额守恒的分配规则。

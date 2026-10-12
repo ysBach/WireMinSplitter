@@ -68,6 +68,21 @@ h3 {
   color: var(--muted);
 }
 
+.credit {
+  margin: -0.35rem 0 0.9rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.credit a {
+  color: #0f766e;
+  text-decoration: none;
+}
+
+.credit a:hover {
+  text-decoration: underline;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -243,6 +258,11 @@ button.tertiary:hover {
   background: #d1d5db;
 }
 
+button.compact {
+  padding: 0.34rem 0.58rem;
+  font-size: 0.8rem;
+}
+
 .drag-handle {
   width: 2rem;
   padding: 0.2rem 0;
@@ -300,6 +320,35 @@ tr.drop-after td {
   flex-wrap: wrap;
 }
 
+.result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.result-head h2 {
+  margin: 0;
+}
+
+.result-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.result-feedback {
+  margin: 0.4rem 0 0.15rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.result-feedback.error {
+  color: var(--error);
+}
+
 .error {
   color: var(--error);
 }
@@ -311,9 +360,7 @@ tr.drop-after td {
   font-variant-numeric: tabular-nums;
 }
 
-.hidden {
-  display: none;
-}
+/* .hidden moved to bottom with !important */
 
 @media (max-width: 760px) {
   .page-top {
@@ -337,4 +384,90 @@ tr.drop-after td {
     font-size: 0.9rem;
     padding: 0.45rem;
   }
+}
+
+/* PWA, Calculating Warning, and Notice Styles */
+.calculating-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.65rem 0.85rem;
+  margin: 0.8rem 0;
+  border-radius: 8px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  font-size: 0.92rem;
+}
+
+.calculating-text {
+  flex: 1;
+}
+
+.calculating-timer {
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.5rem;
+  font-size: 0.88rem;
+  opacity: 0.9;
+}
+
+.calculating-banner button {
+  background: #b45309;
+  color: #fff;
+  border: none;
+}
+
+.calculating-banner button:hover {
+  background: #92400e;
+}
+
+.rounding-notice,
+.approximate-notice {
+  margin: 0.5rem 0;
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  font-size: 0.86rem;
+}
+
+.approximate-notice {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.offline-badge {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  background: #6b7280;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.result-tag-approx {
+  color: #b45309;
+  font-weight: 600;
+  font-size: 0.85em;
+  margin-left: 0.35rem;
+}
+
+/* Strict hidden utility override */
+.hidden,
+[hidden],
+.calculating-banner.hidden,
+.rounding-notice.hidden,
+.approximate-notice.hidden,
+.offline-badge.hidden,
+#single-result-panel.hidden,
+#dual-result-panel.hidden,
+#error.hidden,
+#result.hidden {
+  display: none !important;
 }

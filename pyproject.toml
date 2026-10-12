@@ -1,12 +1,12 @@
 [project]
 name = "wire_min_splitter"
 version = "0.1.0"
-description = "Cross-platform party settlement calculator with transfer minimization."
+description = "Exact reference solver and local API for the MoneySplit static PWA."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115.0,<1.0.0",
-  "jinja2>=3.1.0,<4.0.0",
+  "pydantic>=2.0.0,<3.0.0",
   "uvicorn>=0.30.0,<1.0.0",
 ]
 
@@ -14,11 +14,26 @@ dependencies = [
 dev = [
   "pytest>=8.0.0,<9.0.0",
 ]
+test = [
+  "pytest>=8.0.0,<9.0.0",
+  "httpx>=0.28.0,<1.0.0",
+  "ruff>=0.11.0,<1.0.0",
+  "isort>=6.0.0,<8.0.0",
+]
 
 [build-system]
 requires = ["hatchling>=1.25.0"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel.force-include]
+"web" = "wire_min_splitter/web"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "web", "tests", "scripts", "README*.md", "pyproject.toml", "uv.lock", "package.json", "package-lock.json", ".node-version"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.isort]
+profile = "black"
