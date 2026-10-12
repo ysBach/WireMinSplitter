@@ -85,7 +85,7 @@ test("offline installation fails rather than accepting a shell without its solve
   assert.equal(worker.calls.skipWaiting, 0);
 });
 
-test("offline reload and every calculation module come from the installed version", async () => {
+test("offline navigation to the app or a cached file shows that installed file", async () => {
   const worker = serviceWorker("installed");
   await worker.dispatch("install");
   await worker.dispatch("activate");
@@ -93,7 +93,8 @@ test("offline reload and every calculation module come from the installed versio
   for (const filename of ["/", "/app.js", "/solver-worker.js", "/solver.js", "/vendor/html2canvas.min.js"]) {
     const response = await worker.dispatch("fetch", { url: origin + filename, method: "GET", mode: "navigate" });
     assert.equal(response?.status, 200, filename);
-    assert.ok((await response.text()).length > 0);
+    const expected = await readFile(resolve("web", "." + (filename === "/" ? "/index.html" : filename)), "utf8");
+    assert.ok((await response.text()) === expected, filename + " must show its own content");
   }
   assert.equal(worker.calls.network, networkAfterInstall);
 });

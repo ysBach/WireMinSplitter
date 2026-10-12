@@ -49,10 +49,15 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) => {
       const isNavigate = event.request.mode === "navigate";
-      const lookupRequest = isNavigate ? "./" : event.request;
-      const matchOptions = isNavigate ? { ignoreSearch: true } : undefined;
+      // A navigation to a cached file, such as ./solver.js, shows that file.
+      // Any other navigation shows the cached app page.
+      const cachedMatch = isNavigate
+        ? cache
+            .match(event.request, { ignoreSearch: true, ignoreVary: true })
+            .then((response) => response || cache.match("./", { ignoreSearch: true }))
+        : cache.match(event.request);
 
-      return cache.match(lookupRequest, matchOptions).then((cachedResponse) => {
+      return cachedMatch.then((cachedResponse) => {
         if (cachedResponse) {
           return cachedResponse;
         }
