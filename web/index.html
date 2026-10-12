@@ -340,7 +340,7 @@
         <p id="error" class="error hidden" role="alert" aria-live="assertive"></p>
         <div id="result" class="hidden">
           <p id="rounding-notice" class="rounding-notice hidden" data-i18n="notice.rounding">
-            Note: Due to nearest-cent allocation, identical participants may differ by 0.01.
+            Note: Due to balanced-cent allocation, identical participants may differ by 0.01.
           </p>
           <p id="approximate-notice" class="approximate-notice hidden" data-i18n="notice.approximate_display">
             Approximate display only (not exact payment instructions; sums may not conserve).
@@ -377,6 +377,93 @@
           </div>
         </div>
       </section>
+      <details id="algorithm-details" class="card algorithm-details" data-html2canvas-ignore="true">
+        <summary data-i18n="algorithm.title">How the algorithm works</summary>
+        <div class="algorithm-body">
+        <p data-i18n="algorithm.intro">This tool finds the fewest direct payer-to-receiver transfers for balances rounded to cents. It computes with exact fractions. The code runs in your browser. It works offline after your browser caches the app.</p>
+        <h3 data-i18n="algorithm.h.input">1. Read the input</h3>
+        <ol>
+          <li data-i18n="algorithm.in.1">Names: Unicode NFC, trimmed, cut to 120 code points. Each name must be non-empty and unique.</li>
+          <li data-i18n="algorithm.in.2">Read money as exact BigInt fractions. The solver uses no floating-point money.</li>
+          <li data-i18n="algorithm.in.3">Each spent value is 0 or more. The multiplier m must be above 0. Total Extra Get must equal total Extra Pay exactly.</li>
+          <li data-i18n="algorithm.in.4">A Repeat row with n above 1 becomes n people with numbered names (for example, Team 01, Team 02). A row with n = 1 keeps the typed name.</li>
+        </ol>
+        <h3 data-i18n="algorithm.h.balance">2. Compute the cent balances</h3>
+        <pre data-i18n="algorithm.bal.formula">N = number of people
+T = sum of spent
+m = multiplier
+b_i = 100 · m · (spent_i − T/N + get_i − pay_i)
+spent = Spent, get = Extra Get, pay = Extra Pay
+b_i = ideal balance in cents (exact fraction)</pre>
+        <ol>
+          <li data-i18n="algorithm.bal.1">Compute each b_i as an exact fraction.</li>
+          <li data-i18n="algorithm.bal.2">Round every b_i down to a whole cent (floor: the largest integer not above b_i). Example: −33⅓ becomes −34.</li>
+          <li data-i18n="algorithm.bal.3">The sum is now 0 or below. It is short of 0 by fewer than N cents. Call the shortage k.</li>
+          <li data-i18n="algorithm.bal.4">Add 1 cent to the k people with the largest fractional remainders. Break ties by name, in Unicode code point order.</li>
+          <li data-i18n="algorithm.bal.5">Positive balance: the person receives. Negative: the person pays. Zero: removed from the search.</li>
+        </ol>
+        <p data-i18n="algorithm.bal.note">Each cent balance differs from its ideal value by less than 1 cent. The sum is exactly 0. This largest-remainder allocation preserves the total. Identical participants can differ by 1 cent.</p>
+        <h3 data-i18n="algorithm.h.example">Example</h3>
+        <pre data-i18n="algorithm.example">A paid 1.00. B and C paid 0. Multiplier 1.
+Ideal cents: A +66⅔, B −33⅓, C −33⅓
+Round down: 66, −34, −34 → sum −2, so k = 2
+Remainders: 2/3, 2/3, 2/3 (tie)
+Tie by name: A and B get +1 cent
+Balances: A +0.67, B −0.33, C −0.34 (sum 0)
+Transfers: B → A 0.33, C → A 0.34</pre>
+        <h3 data-i18n="algorithm.h.views">3. Show the views</h3>
+        <ol>
+          <li data-i18n="algorithm.views.1">Multiplier 1: one plan.</li>
+          <li data-i18n="algorithm.views.2">Multiplier other than 1: the Multiplied plan uses m. The Original plan uses factor 1.</li>
+          <li data-i18n="algorithm.views.3">The solver calculates each view independently. In strict mode, one view can show a no-plan error while the other shows a plan.</li>
+          <li data-i18n="algorithm.views.4">The rounding controls change only the shown numbers. Units other than 0.01 are approximate. Use 0.01 for exact payment instructions.</li>
+        </ol>
+        <h3 data-i18n="algorithm.h.goal">4. Set the goal</h3>
+        <pre data-i18n="algorithm.goal.formula">minimize (transfers, burden) in lexicographic order: fewest transfers first, then smallest burden
+burden = Σ max(0, out_i − 1), summed over non-preferred payers i
+out_i = number of transfers that payer i sends</pre>
+        <ol>
+          <li data-i18n="algorithm.goal.1">Preferred payers (Preferred Multi-Payer) have no penalty.</li>
+          <li data-i18n="algorithm.goal.2">Strict mode: each non-preferred payer sends at most 1 transfer. Receivers have no limit.</li>
+          <li data-i18n="algorithm.goal.3">If strict mode allows no plan, the result is a no-plan error.</li>
+        </ol>
+        <h3 data-i18n="algorithm.h.search">5. Search the plans</h3>
+        <pre data-i18n="algorithm.search.formula">state = payers [(amount, preferred, has_sent)] + receiver amounts
+has_sent = 1: the payer already sent a transfer in this plan
+move = payer i pays receiver j an amount of min(a_i, r_j)
+best(state) = min_lex over all moves of (1 + child.count, extra + child.penalty)
+extra = 1 if the payer has_sent and is non-preferred, else 0
+best(empty state) = (0, 0)
+Skip infeasible children. Strict mode: skip moves with extra = 1.
+min_lex = smallest pair, compared by count first, then penalty</pre>
+        <ol>
+          <li data-i18n="algorithm.search.1">Run an iterative depth-first search. Try every distinct payer/receiver pair. Move the smaller of the two remaining amounts. Each move removes at least 1 person from the state.</li>
+          <li data-i18n="algorithm.search.2">Payers are equal only if amount, preferred flag, and has_sent flag all match. Receivers are equal if their amounts match. The search tries equal choices once.</li>
+          <li data-i18n="algorithm.search.3">The search caches each state as sorted payer tuples and sorted receiver amounts.</li>
+          <li data-i18n="algorithm.search.4">One payer left, or one receiver left: an exact closed form gives the answer. It follows the strict rule.</li>
+          <li data-i18n="algorithm.search.5">Lower bound: max(payers left, receivers left), computed after the proposed move. Skip the move only if 1 + bound is more than the best count found. Equal counts stay, so burden can still decide.</li>
+        </ol>
+        <p data-i18n="algorithm.search.note">If plans tie, the search uses canonical amounts, payer flags and has_sent status, then normalized names to pick one plan in a fixed way.</p>
+        <h3 data-i18n="algorithm.h.proof">6. Why the result is exact</h3>
+        <ol>
+          <li data-i18n="algorithm.proof.1">Take any plan that has a cycle (ignore the arrow directions). Shift +δ and −δ alternately along the cycle edges. Every participant's balance stays the same. Stop when one transfer is 0.</li>
+          <li data-i18n="algorithm.proof.2">This creates no new payer/receiver pair. It raises no payer's outgoing count. So the transfer count, the burden, and the strict rule are never worse.</li>
+          <li data-i18n="algorithm.proof.3">So some optimal plan has no cycle. It is a forest.</li>
+          <li data-i18n="algorithm.proof.4">A non-empty forest has a leaf: a person with 1 transfer. That transfer carries the leaf's whole remaining amount. This amount is the smaller remaining amount of the pair.</li>
+          <li data-i18n="algorithm.proof.5">The search tries every such pair, then repeats on the rest. So it reaches an optimal plan.</li>
+        </ol>
+        <p data-i18n="algorithm.proof.scope">Scope: the plan is optimal among direct payer-to-receiver plans for the cent balances. This tool makes no claim for other kinds of plan. Other plans can tie.</p>
+        <h3 data-i18n="algorithm.h.limits">7. Know the limits</h3>
+        <ol>
+          <li data-i18n="algorithm.lim.1">Run time can grow exponentially with the number of payers and receivers.</li>
+          <li data-i18n="algorithm.lim.2">The search runs in a local worker in your browser. It works offline after your browser caches the app code.</li>
+          <li data-i18n="algorithm.lim.3">The solver adds no timeout and no limit on the number of people. Use Cancel to stop a long search.</li>
+          <li data-i18n="algorithm.lim.4">Cancel, or a memory or stack failure, is not a no-plan result. It says nothing about feasibility.</li>
+          <li data-i18n="algorithm.lim.5">Only a successfully completed search returns an optimum for the rounded balances.</li>
+        </ol>
+        <p><a data-i18n="algorithm.source" href="./solver.js" target="_blank" rel="noopener">View the deployed solver source (JavaScript)</a></p>
+        </div>
+      </details>
     </main>
 
     <template id="row-template">

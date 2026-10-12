@@ -30,6 +30,9 @@ Share the live URL with users. Do not share the local preview address.
 4. Choose soft mode or strict mode. Calculate the settlement.
 5. Read the payment instructions. Use Copy or Screenshot to export them.
 
+Open **How the algorithm works** below Result to read the full method and its correctness proof.
+The explanation follows the selected interface language and is available offline with the cached app.
+
 Soft mode minimizes payment count first. It then reduces extra payments by unselected payers.
 Strict mode allows multiple outgoing payments only for selected payers.
 
