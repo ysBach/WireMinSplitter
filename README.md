@@ -1,26 +1,26 @@
 # MoneySplit / Wire-Min-Splitter
 
-Open the public URL that the maintainer provides. Users need only a browser.
+Open [https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/) in any browser to use MoneySplit.
 
 MoneySplit divides expenses and finds the fewest payments needed to settle them.
 It calculates on your device. It does not send names or amounts to a calculation server.
-Users do not need a terminal, Node.js, Python, or an account.
+Users need only a browser. They do not need a terminal, an account, Node.js, or Python.
+The site owner's computer does not need to run.
 
 Languages: [한국어](README.ko.md), [日本語](README.ja.md), [中文](README.zh.md).
 
 ## Public access
 
-This repository contains the static website and an installable app.
-Public access requires a successful deployment. This README does not list a production URL.
+The live site is a static website on Cloudflare Pages. It is also an installable web app.
+The current public release is not a native installer. Native Tauri installers remain future work.
 
 | Address | Who can use it? |
 | --- | --- |
-| `https://<project>.pages.dev` | Anyone after deployment. This is an address format, not a live link. |
+| [https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/) | Anyone with a browser. |
 | A configured custom domain | Anyone after domain registration and hosting setup. |
 | `http://127.0.0.1:8080` | The person who starts the local preview on that computer. |
 
-Cloudflare provides the actual public URL after deployment.
-Share that URL with users. Do not share the local preview address.
+Share the live URL with users. Do not share the local preview address.
 
 ## Calculate a settlement
 
@@ -52,7 +52,7 @@ There is no automatic time limit. Cancellation does not prove that a settlement 
 The app is a progressive web app (PWA). A supporting browser can install it in a separate app window.
 Installation is optional. Users can continue to use the public website.
 
-1. Open the public URL while online.
+1. Open [the live site](https://moneysplit-e1m.pages.dev/) while online.
 2. Use the browser's install command if available.
 3. Open the installed app to calculate a settlement.
 
@@ -61,17 +61,30 @@ The first page load alone does not guarantee that caching finished.
 The browser can remove cached files when it clears storage.
 
 Installation support depends on the browser and operating system.
-Native installers for macOS, Windows, and Linux through Tauri remain future work.
 
 ## Publish with Cloudflare Pages
 
 These steps are for the maintainer. Users do not perform them.
+The live site uses Cloudflare Pages Direct Upload in the existing project `moneysplit`.
+
+1. Run `npm run build` on your computer.
+2. Open Cloudflare **Workers & Pages**. Select the Pages project `moneysplit`.
+3. Select **Create a new deployment**. Choose **Production**.
+4. Upload the `dist` folder, or a ZIP file with `index.html` at the archive root.
+5. Save and deploy. Share the live URL.
+
+A Direct Upload project cannot change to Git integration.
+Automatic Git deployment needs a new project (next section).
+Cloudflare publishes only `dist`. The website needs no Python server or server secrets.
+The `_headers` file defines the browser security policy.
+
+### Optional: new Git-connected project
 
 1. Push the reviewed release to GitHub.
 2. Open Cloudflare's **Workers & Pages** page.
 3. Select **Create application → Pages → Connect to Git**.
 4. Select the repository and production branch. Enter the settings below.
-5. Select **Save and Deploy**. Share the production URL after deployment succeeds.
+5. Select **Save and Deploy**. Share the new project's URL after deployment succeeds.
 
 | Setting | Value |
 | --- | --- |
@@ -83,18 +96,18 @@ These steps are for the maintainer. Users do not perform them.
 | Build variable | `SKIP_DEPENDENCY_INSTALL=1` |
 
 Cloudflare builds the site after later pushes to the connected production branch.
-Users can open the same URL without running local commands.
 
-Cloudflare publishes only `dist`. The website needs no Python server or server secrets.
-The `_headers` file defines the browser security policy.
+### Cost and domains
 
 Cloudflare offers free static hosting within its published limits.
+This site needs no Functions, payment upgrade, or domain purchase.
 A custom domain has separate registration and renewal fees.
 To use a custom domain, register an available name.
 Add it under the Pages project's **Custom domains**. Follow Cloudflare's DNS instructions.
 Deployment does not register a domain automatically.
 
-Provider instructions: [Git deployment](https://developers.cloudflare.com/pages/get-started/git-integration/),
+Provider instructions: [Direct Upload](https://developers.cloudflare.com/pages/get-started/direct-upload/),
+[Git deployment](https://developers.cloudflare.com/pages/get-started/git-integration/),
 [build environment](https://developers.cloudflare.com/pages/configuration/build-image/),
 [custom domains](https://developers.cloudflare.com/pages/configuration/custom-domains/),
 [static hosting prices](https://developers.cloudflare.com/pages/functions/pricing/),

@@ -1,14 +1,14 @@
 # 最少转账AA计算器 (MoneySplit / Wire-Min-Splitter)
 
-请在浏览器中打开维护者提供的公开网址。没有记录任何正式环境网址。
+请在浏览器中打开 [https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)。
 
 在浏览器内计算结算的静态网站。界面语言为英语、韩语、日语、中文。姓名和金额不会发送到计算服务器。不需要账户、数据库、支付服务或 Python 服务器。
 
+用户只需要浏览器。不需要终端、账户、Node.js 或 Python。所有者的电脑也无需保持运行。
+
 ## 使用方法
 
-有了公开网址，无需终端、Node.js 或 Python 即可使用。
-
-1. 打开维护者提供的公开网址。
+1. 打开[公开网站](https://moneysplit-e1m.pages.dev/)。
 2. 输入每位参与者的姓名和支出。额外付款、收款为可选项，两者总额必须完全相等。
 3. 选择可以多次转账的人和模式。严格模式下，只有选中的人可以进行多笔转账。
 4. 点击**计算结算**。
@@ -16,13 +16,11 @@
 
 ## 发布状态
 
-没有记录任何正式环境网址。要公开发布，必须先成功完成 Cloudflare 部署。
+公开网址是 [https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)。这是 Cloudflare Pages 上的静态网站。当前公开版本不是 Tauri 安装包。
 
 `http://127.0.0.1:8080` 只是本机的本地预览，不是可分享的公开网址。
 
-Cloudflare Pages 网址的格式是 `https://<project>.pages.dev`。`<project>` 只是占位符，并非真实网站。用户应打开维护者提供的实际网址或已配置的自定义域名。
-
-Cloudflare Pages 提供免费的静态网站托管。详见[官方文档](https://developers.cloudflare.com/pages/functions/pricing/)。自定义域名另有注册与续费费用。
+Cloudflare Pages 提供免费的静态网站托管。详见[官方文档](https://developers.cloudflare.com/pages/functions/pricing/)。本网站不需要 Functions、付费升级或购买域名。自定义域名另有注册与续费费用。
 
 ## 安装与离线
 
@@ -53,7 +51,15 @@ npm run build
 npm run preview
 ```
 
-Cloudflare Pages：框架 **None**，构建命令 `npm run build`，输出目录 `dist`。请按[英文 README](README.md)中的步骤操作。
+部署人员按以下步骤更新。当前网站使用 Cloudflare Pages 的[直接上传](https://developers.cloudflare.com/pages/get-started/direct-upload/)。
+
+1. 在自己的电脑上运行 `npm run build`。
+2. 在 Cloudflare **Workers & Pages** 中打开现有 Pages 项目 `moneysplit`。
+3. 选择 **Create a new deployment**，然后选择 **Production**。
+4. 上传 `dist` 文件夹，或 `index.html` 位于压缩包根目录的 ZIP 文件。
+5. 保存并部署，然后分享公开网址。
+
+直接上传项目无法改为 Git 集成。自动 Git 部署需要新项目。步骤见[英文 README](README.md)。
 
 Python 保留为参考实现和可选的本地 API。使用项目 `.venv`：
 

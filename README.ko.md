@@ -1,14 +1,14 @@
 # 최소송금 N빵 계산기 (MoneySplit / Wire-Min-Splitter)
 
-유지관리자가 제공한 공개 URL을 브라우저에서 여세요. 기록된 운영 URL은 없습니다.
+[https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)를 브라우저에서 여세요.
 
 브라우저에서 정산을 계산하는 정적 웹사이트입니다. 화면 언어는 영어, 한국어, 일본어, 중국어입니다. 이름과 금액을 계산 서버로 보내지 않습니다. 계정, 데이터베이스, 결제 서비스, Python 서버가 필요 없습니다.
 
+사용자에게는 브라우저만 필요합니다. 터미널, 계정, Node.js, Python은 필요 없습니다. 소유자의 컴퓨터를 켜 둘 필요도 없습니다.
+
 ## 사용 방법
 
-공개 URL이 있으면 터미널, Node.js, Python 없이 사용할 수 있습니다.
-
-1. 유지관리자가 제공한 공개 URL을 엽니다.
+1. [공개 사이트](https://moneysplit-e1m.pages.dev/)를 엽니다.
 2. 참가자별 이름과 지출을 입력합니다. 추가 지급/수령은 선택 사항이며 합계가 정확히 같아야 합니다.
 3. 여러 번 송금해도 되는 사람과 모드를 선택합니다. 엄격 모드에서는 선택한 사람만 여러 건을 보낼 수 있습니다.
 4. **정산 계산**을 누릅니다.
@@ -16,13 +16,11 @@
 
 ## 공개 상태
 
-기록된 운영 URL은 없습니다. 공개하려면 Cloudflare 배포가 성공해야 합니다.
+공개 주소는 [https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)입니다. Cloudflare Pages의 정적 사이트입니다. 현재 공개 버전은 Tauri 설치 파일이 아닙니다.
 
 `http://127.0.0.1:8080`은 내 컴퓨터에서만 보는 로컬 미리보기입니다. 공유할 수 있는 공개 URL이 아닙니다.
 
-Cloudflare Pages 주소의 형식은 `https://<project>.pages.dev`입니다. `<project>`는 자리표시자일 뿐 실제 사이트가 아닙니다. 사용자는 유지관리자가 제공한 실제 URL 또는 설정된 사용자 지정 도메인을 엽니다.
-
-Cloudflare Pages는 정적 사이트 호스팅을 무료로 제공합니다. [공식 문서](https://developers.cloudflare.com/pages/functions/pricing/)를 참조하세요. 사용자 지정 도메인은 별도의 등록·갱신 비용이 있습니다.
+Cloudflare Pages는 정적 사이트 호스팅을 무료로 제공합니다. [공식 문서](https://developers.cloudflare.com/pages/functions/pricing/)를 참조하세요. 이 사이트에는 Functions, 유료 업그레이드, 도메인 구매가 필요 없습니다. 사용자 지정 도메인은 별도의 등록·갱신 비용이 있습니다.
 
 ## 설치와 오프라인
 
@@ -53,7 +51,15 @@ npm run build
 npm run preview
 ```
 
-Cloudflare Pages: 프레임워크 **None**, 빌드 명령 `npm run build`, 출력 폴더 `dist`. 단계별 절차는 [영문 README](README.md)를 따르세요.
+배포 담당자는 다음 순서로 갱신합니다. 현재 사이트는 Cloudflare Pages [직접 업로드](https://developers.cloudflare.com/pages/get-started/direct-upload/)를 사용합니다.
+
+1. 내 컴퓨터에서 `npm run build`를 실행합니다.
+2. Cloudflare **Workers & Pages**에서 기존 Pages 프로젝트 `moneysplit`을 엽니다.
+3. **Create a new deployment**를 선택하고 **Production**을 고릅니다.
+4. `dist` 폴더 또는 `index.html`이 ZIP 최상위에 있는 ZIP 파일을 업로드합니다.
+5. 저장하고 배포한 뒤 공개 URL을 공유합니다.
+
+직접 업로드 프로젝트는 Git 연동으로 바꿀 수 없습니다. 자동 Git 배포는 새 프로젝트가 필요합니다. 절차는 [영문 README](README.md)를 따르세요.
 
 Python은 참고 구현과 선택적 로컬 API입니다. 프로젝트 `.venv`를 사용합니다.
 

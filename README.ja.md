@@ -1,14 +1,14 @@
 # 最小送金バラバラ割り勘 (MoneySplit / Wire-Min-Splitter)
 
-管理者が提供した公開URLをブラウザーで開いてください。記録された本番URLはありません。
+[https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)をブラウザーで開いてください。
 
 ブラウザー内で精算を計算する静的サイトです。画面の言語は英語、韓国語、日本語、中国語です。名前と金額は計算サーバーに送信されません。アカウント、データベース、決済サービス、Pythonサーバーは不要です。
 
+利用者に必要なのはブラウザーだけです。ターミナル、アカウント、Node.js、Pythonは不要です。所有者のコンピューターを起動しておく必要もありません。
+
 ## 使い方
 
-公開URLがあれば、ターミナル、Node.js、Pythonなしで使えます。
-
-1. 管理者が提供した公開URLを開きます。
+1. [公開サイト](https://moneysplit-e1m.pages.dev/)を開きます。
 2. 参加者ごとに名前と支出を入力します。追加支払・受取は任意で、合計が正確に一致する必要があります。
 3. 複数回送金してよい人とモードを選びます。厳格モードでは、選んだ人だけが複数送金できます。
 4. **精算を計算**を押します。
@@ -16,13 +16,11 @@
 
 ## 公開状況
 
-記録された本番URLはありません。公開するには、Cloudflareへの配信が成功している必要があります。
+公開URLは[https://moneysplit-e1m.pages.dev/](https://moneysplit-e1m.pages.dev/)です。Cloudflare Pages上の静的サイトです。現在の公開版はTauriのインストーラーではありません。
 
 `http://127.0.0.1:8080`は自分のコンピューターだけで見るローカルプレビューです。共有できる公開URLではありません。
 
-Cloudflare PagesのURLの形式は`https://<project>.pages.dev`です。`<project>`は仮の名前であり、実在するサイトではありません。利用者は、管理者が提供した実際のURLまたは設定済みの独自ドメインを開きます。
-
-Cloudflare Pagesは静的サイトのホスティングを無料で提供しています。[公式ドキュメント](https://developers.cloudflare.com/pages/functions/pricing/)を参照してください。独自ドメインには、別に登録・更新料金がかかります。
+Cloudflare Pagesは静的サイトのホスティングを無料で提供しています。[公式ドキュメント](https://developers.cloudflare.com/pages/functions/pricing/)を参照してください。このサイトにFunctions、有料アップグレード、ドメイン購入は不要です。独自ドメインには、別に登録・更新料金がかかります。
 
 ## インストールとオフライン
 
@@ -53,7 +51,15 @@ npm run build
 npm run preview
 ```
 
-Cloudflare Pages: フレームワーク**None**、ビルドコマンド`npm run build`、出力ディレクトリー`dist`。手順は[英語README](README.md)に従ってください。
+配信担当者は次の手順で更新します。現在のサイトはCloudflare Pagesの[ダイレクトアップロード](https://developers.cloudflare.com/pages/get-started/direct-upload/)を使っています。
+
+1. 自分のコンピューターで`npm run build`を実行します。
+2. Cloudflareの**Workers & Pages**で、既存のPagesプロジェクト`moneysplit`を開きます。
+3. **Create a new deployment**を選び、**Production**を選びます。
+4. `dist`フォルダー、または`index.html`をZIPの最上位に置いたZIPファイルをアップロードします。
+5. 保存して配信し、公開URLを共有します。
+
+ダイレクトアップロードのプロジェクトは、Git連携に変更できません。自動Git配信には新しいプロジェクトが必要です。手順は[英語README](README.md)に従ってください。
 
 Pythonは参照実装と任意のローカルAPIです。プロジェクトの`.venv`を使います。
 
