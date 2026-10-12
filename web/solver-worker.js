@@ -1,4 +1,5 @@
-// Web Worker entry. Receives {id, payload}; replies {id, result} or {id, error: {message, resource}}.
+// Receive {id, payload} in a Web Worker.
+// Reply with {id, result} or {id, error: {message, resource}}.
 // The main thread cancels a long search by terminating this worker.
 import { SettlementError, SettlementResourceError, solveSettlement } from "./solver.js";
 

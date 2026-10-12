@@ -1,20 +1,26 @@
-"""Exact settlement solver (Python reference implementation).
+"""Calculate exact expense settlements with the Python reference solver.
 
-Money is handled as exact rationals. Net balances are rounded to whole cents once,
-at the end, with a balanced nearest-cent allocation.
+The solver uses exact rational amounts. It rounds final balances to whole cents
+with an allocation that keeps their sum zero.
 
 Notes
 -----
-The transfer search takes one active payer and one active receiver per step and
-moves the smaller of their two remaining amounts. A transportation graph with the
-fewest edges has no cycle: shifting flow around a cycle removes an edge, adds none
-and never raises an out-degree. So it is a forest. A forest with an edge has a leaf,
-and the leaf edge carries all of the leaf's remaining amount, which is the smaller of
-the two remaining amounts. Branching over every payer/receiver pair therefore reaches
-every minimum-edge graph, with or without the strict out-degree limit. States are
-memoised as sorted multisets. Payers with equal (amount, preferred, sent) are
-interchangeable, so merging them is exact. Preferred and other payers are never
-merged, because their penalties differ.
+Each search step selects an active payer and receiver. It transfers the smaller
+remaining amount.
+
+A graph with the fewest transfers has no cycle. Moving money around a cycle can
+remove a transfer without adding transfers or increasing any payer's outgoing
+count. Thus, an optimal graph is a forest, a graph without cycles.
+
+A nonempty forest has a leaf, a participant with one transfer. That transfer
+carries the leaf's whole remaining amount. This amount is the smaller remaining
+amount of the pair. Searching all payer/receiver pairs therefore reaches every
+minimum-transfer plan, including plans subject to strict payment limits.
+
+The search caches states as sorted multisets. Payers with equal amount, preferred
+status, and previous-payment status are interchangeable. Merging these payers
+preserves the optimum. Preferred and other payers remain separate because their
+penalties differ.
 """
 
 from __future__ import annotations
@@ -33,7 +39,7 @@ class SettlementError(ValueError):
 
 
 class SettlementResourceError(SettlementError):
-    """Raised when the search runs out of resources (no feasibility conclusion)."""
+    """Report a resource failure without concluding whether a plan exists."""
 
 
 class SettlementInfeasibleError(SettlementError):
@@ -50,9 +56,10 @@ class PartyMember:
 
 @dataclass(frozen=True)
 class SourceMember:
-    """One participant with exact source amounts (before any multiplier).
+    """Store one participant's exact amounts before multiplication.
 
-    Amounts are decimal strings, `int` or `Decimal`. `float` is rejected.
+    Amounts must be decimal strings, `int`, or `Decimal`. The solver rejects
+    `float` amounts.
     """
 
     name: str
@@ -99,11 +106,15 @@ _OPEN = object()
 def _parse_decimal(value: object, field: str) -> Fraction:
     """Parse a decimal string, `int` or `Decimal` into an exact `Fraction`.
 
-    Accepted text is `[+-]digits[.digits][e[+-]digits]` with ASCII digits, no
-    spaces. There is no size limit. A value so large that Python cannot build it
-    raises `SettlementResourceError`. Python also limits integer text to 4300
-    digits; longer text is reported as a resource error, which the browser
-    solver does not share.
+    Text must contain ASCII digits and no spaces. It can include a sign, decimal
+    point, and signed exponent. At least one digit must precede the exponent.
+    The solver sets no size limit. If Python cannot construct the value, this
+    function raises `SettlementResourceError`.
+
+    Notes
+    -----
+    Python's default integer-text limit is 4300 digits. Exceeding its configured
+    limit causes a resource error. The browser solver does not use this limit.
     """
     if isinstance(value, bool) or not isinstance(value, (str, int, Decimal)):
         raise SettlementError(f"Invalid monetary value for {field}: {value!r}")
@@ -132,11 +143,12 @@ def _parse_decimal(value: object, field: str) -> Fraction:
 
 
 def to_cents(value: Decimal | int | str) -> int:
-    """Convert a money-like value to integer cents, half away from zero.
+    """Convert an amount to integer cents, rounding halves away from zero.
 
-    Legacy helper. Accepts `str`, `int` and `Decimal`; `float` is rejected
-    because it cannot hold decimal money exactly. Prefer exact decimal strings
-    with `solve_payload` so that amounts are not rounded one by one.
+    This legacy helper accepts `str`, `int`, and `Decimal`. It rejects `float`
+    because binary floating-point values cannot preserve all decimal amounts.
+    Prefer decimal strings with ``solve_payload()`` to avoid rounding each
+    source amount separately.
     """
     text: object = value.strip() if isinstance(value, str) else value
     try:
@@ -159,7 +171,7 @@ def _format_cents(cents: int) -> str:
 
 
 def cents_to_decimal(cents: int) -> Decimal:
-    """Return `cents / 100` as an exact `Decimal` with two decimals."""
+    """Return ``cents / 100`` as an exact `Decimal` with two decimal places."""
     return Decimal(_format_cents(cents))
 
 
@@ -183,15 +195,19 @@ class _Person:
 def _balanced_nets(
     people: Sequence[_Person], multiplier: Fraction
 ) -> tuple[list[NetBalance], bool]:
-    """Round exact nets to cents so they sum to zero, each within one cent.
+    """Round exact balances to cents while keeping their sum zero.
 
-    The exact net of person i is
-    `multiplier * (spent_i - total_spent / N + extra_get_i - extra_pay_i)`.
-    Conservation (`sum extra_get == sum extra_pay`) is checked before the
-    multiplier. Every net (in cents) is floored; the missing cents go to the
-    largest fractional remainders, ties by name in code point order.
+    Each rounded balance differs from its exact value by less than one cent.
+    The exact net of participant i is
+    ``multiplier * (spent_i - total_spent / N + extra_get_i - extra_pay_i)``,
+    where N is the participant count.
 
-    Returns the balances and whether any exact net was not a whole cent.
+    The source totals of `extra_get` and `extra_pay` must match before
+    multiplication. Round each exact balance down to whole cents. Allocate the
+    remaining cents to the largest fractional remainders. Resolve equal
+    remainders by name in Unicode code-point order.
+
+    Return the balances and a flag for any exact balance that required rounding.
     """
     if not people:
         raise SettlementError("At least one participant is required.")
@@ -236,7 +252,7 @@ def _people_from_cents(members: Sequence[PartyMember]) -> list[_Person]:
 
 
 def compute_net_balances(members: Sequence[PartyMember]) -> list[NetBalance]:
-    """Compute balanced nearest-cent net positions from integer-cent members."""
+    """Compute net balances in cents with an allocation that keeps their sum zero."""
     return _balanced_nets(_people_from_cents(members), _ONE)[0]
 
 
@@ -246,9 +262,10 @@ _Payer = tuple[int, int, int]  # (remaining cents, preferred 0/1, already sent 0
 def _closed_form(
     payers: Sequence[_Payer], receivers: Sequence[int], strict: bool
 ) -> Any:
-    """Exact (count, penalty) when one side has a single party; `None` if infeasible.
+    """Return the optimum for an empty state or a single payer or receiver.
 
-    Returns `_OPEN` when both sides have at least two active parties.
+    Return `None` if no strict plan exists. Return `_OPEN` when both sides have
+    at least two active participants and need a search.
     """
     count = len(payers)
     if count == 0:
@@ -298,7 +315,7 @@ def _fill_memo(
     strict: bool,
     memo: dict[tuple, Any],
 ) -> None:
-    """Iterative depth-first search that stores the best first move per state."""
+    """Find the best first transfer per state with iterative depth-first search."""
     stack: list[list[Any]] = [[start_p, start_r, _moves(start_p, start_r), 0, None]]
     while stack:
         frame = stack[-1]
@@ -342,20 +359,22 @@ def optimize_transfers(
 ) -> tuple[list[Transfer], int]:
     """Find transfers with the fewest transactions, then the lowest burden penalty.
 
-    The penalty counts, for each payer outside `preferred_multi_payers`, the
-    outgoing transfers beyond the first. With `strict_preference` such payers may
-    send only one transfer. Preferred names that are not payers are ignored. The
-    result depends on the (name, cents) pairs only, not on their order. Ties are
-    resolved by the first move in a fixed canonical order. The search is exact and
-    has no size limit, so its run time can grow exponentially with the number of
-    payers and receivers.
+    The penalty counts each nonpreferred payer's outgoing transfers beyond the
+    first. With `strict_preference`, these payers can send only one transfer.
+    The solver ignores preferred names that are not payers.
+
+    The result depends on the name/cent pairs, not their order. The first move in
+    a fixed canonical order resolves ties. The search is exact and has no size
+    limit. Its run time can grow exponentially with the number of payers and
+    receivers.
 
     Raises
     ------
     SettlementError
         For invalid balances or when no strict plan exists.
     SettlementResourceError
-        When the search runs out of memory (no conclusion about feasibility).
+        If the search exhausts memory. This error does not conclude whether a
+        plan exists.
     """
     seen: set[str] = set()
     payers: list[tuple[str, int]] = []
@@ -437,7 +456,7 @@ def solve_settlement(
     preferred_multi_payers: Sequence[str] | None = None,
     strict_preference: bool = False,
 ) -> SettlementComputation:
-    """Solve a settlement from integer-cent members (no multiplier)."""
+    """Calculate a settlement from integer-cent amounts without a multiplier."""
     return _solve_people(
         _people_from_cents(members),
         _ONE,
@@ -471,7 +490,7 @@ def solve_source_settlement(
     preferred_multi_payers: Sequence[str] | None = None,
     strict_preference: bool = False,
 ) -> SettlementComputation:
-    """Solve from exact source amounts; the multiplier scales the exact nets."""
+    """Calculate a settlement after multiplying exact source balances."""
     return _solve_people(
         _people_from_source(members),
         _parse_multiplier(multiplier),
@@ -511,15 +530,18 @@ def _default(value: object, fallback: object) -> object:
 
 
 def solve_payload(payload: Mapping[str, object]) -> dict[str, object]:
-    """Solve a JSON-style payload and return the same dict as the browser solver.
+    """Calculate a settlement and return the browser solver's result format.
 
-    Keys: `people` (items with `name`, `spent`, `extra_pay`, `extra_get`),
-    `multiplier`, `preferred_multi_payers`, `strict_preference`. Amounts should be
-    decimal strings; missing or empty amounts mean 0 and an empty multiplier means
-    1. When the multiplier is not 1, the result also holds `original`, solved
-    independently with multiplier 1. Each multiplied view holds its own plan or
-    `error` when its strict plan is infeasible. Invalid inputs and resource
-    failures raise instead.
+    The payload contains `people`, `multiplier`, `preferred_multi_payers`, and
+    `strict_preference`. Each participant contains `name`, `spent`, `extra_pay`,
+    and `extra_get`.
+
+    Send amounts as decimal strings. Missing or empty amounts mean 0. A missing
+    or empty multiplier means 1.
+
+    A multiplier other than 1 adds `original`, calculated independently with
+    multiplier 1. Each multiplied view contains its own plan or strict-mode
+    `error`. Invalid inputs and resource failures raise exceptions.
     """
     if not isinstance(payload, Mapping):
         raise SettlementError("Payload must be an object.")
@@ -561,10 +583,10 @@ def _view(
     preferred: Sequence[str],
     strict: bool,
 ) -> dict[str, object]:
-    """Return one view of a multiplied payload: its plan, or its own error.
+    """Return a multiplied view's plan or its own strict-mode error.
 
-    Only a strict no-plan result becomes ``{"error": {...}}``. Invalid input and
-    resource failures still raise, so no view reports a false "infeasible".
+    Only a strict no-plan result becomes ``{"error": {...}}``. Invalid inputs
+    and resource failures raise exceptions. They do not indicate infeasibility.
     """
     try:
         return _to_dict(_solve_people(people, multiplier, preferred, strict))

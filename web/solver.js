@@ -1,13 +1,17 @@
-// Exact settlement solver. Money is handled only as BigInt rationals.
+// Calculate exact settlements with BigInt rational amounts.
 //
-// Search proof sketch: a plan with the fewest transfers has no cycle (moving flow
-// around a cycle removes a transfer and never adds one or raises an out-degree), so
-// it is a forest. A forest with a transfer has a leaf, whose single transfer carries
-// the leaf's whole amount, which is the smaller of the two remaining amounts.
-// Branching over every active payer/receiver pair and moving that smaller amount
-// therefore reaches every minimum-transfer plan, in soft and strict modes. States are
-// memoised as sorted multisets. Payers merge only when (amount, preferred, sent) are
-// equal; preferred and other payers never merge.
+// A plan with the fewest transfers has no cycle. Moving money around a cycle
+// removes a transfer without adding transfers or increasing any payer's count.
+// Thus, an optimal graph is a forest, a graph without cycles.
+//
+// A nonempty forest has a leaf, a participant with one transfer. Its transfer
+// carries the leaf's whole remaining amount, the smaller remaining amount of the
+// pair. Searching every active payer/receiver pair therefore reaches every
+// minimum-transfer plan in soft and strict modes.
+//
+// The search caches states as sorted multisets. Merge payers only when their
+// amount, preferred status, and previous-payment status match. Keep preferred
+// and other payers separate because their penalties differ.
 
 export class SettlementError extends Error {
   constructor(message) {
@@ -16,7 +20,7 @@ export class SettlementError extends Error {
   }
 }
 
-// The computation ran out of memory or stack. This is not an infeasibility result.
+// Report a memory or stack failure without concluding whether a plan exists.
 export class SettlementResourceError extends SettlementError {
   constructor(message) {
     super(message);
@@ -108,7 +112,7 @@ function pow10(k) {
   }
 }
 
-// Accepts a decimal string, a BigInt or a safe-integer Number. No size limit.
+// Parse a decimal string, BigInt, or safe-integer Number. The solver sets no size limit.
 export function parseDecimal(value, field) {
   const invalid = () => new SettlementError("Invalid monetary value for " + field + ": " + String(value));
   if (typeof value === "bigint") return rat(value);
@@ -398,10 +402,11 @@ function uniquify(base, used) {
   }
 }
 
-// Expands [{name, repeat, spent, extra_pay, extra_get, preferred}] into people and
-// preferred names. Repeated rows get " 01", " 02", ... (zero padded to the width of
-// the repeat count). Typed duplicate names are an error; only generated names are
-// made unique. Names are cut to 120 code points.
+// Expand rows into people and preferred names. Each row contains name, repeat,
+// spent, extra_pay, extra_get, and preferred.
+// Repeated rows receive suffixes such as " 01" and " 02". Pad each suffix to the
+// digit count of the repeat value. Reject typed duplicate names. Resolve name
+// collisions only for generated names. Limit names to 120 code points.
 export function expandRows(rows) {
   if (!Array.isArray(rows)) throw new SettlementError("'rows' must be a list.");
   const typed = new Set();
@@ -472,10 +477,11 @@ function toResult(people, multiplier, preferred, strict) {
 }
 
 // payload: {people | rows, multiplier, preferred_multi_payers, strict_preference}.
-// Returns {summary, balances, transfers, rounding_notice}. A multiplier other
-// than 1 adds an independently solved "original" view. Each multiplied view is
-// a plan or {error: {message, resource: false}} when its strict plan is infeasible.
-// Invalid inputs and resource failures always throw.
+// Return {summary, balances, transfers, rounding_notice} for a successful plan.
+// A multiplier other than 1 adds an independently calculated "original" view.
+// Each multiplied view contains its plan or {error: {message, resource: false}}
+// when its strict plan is infeasible. Invalid inputs and resource failures throw
+// exceptions.
 export function solveSettlement(payload) {
   if (payload === null || typeof payload !== "object") throw new SettlementError("Payload must be an object.");
   let rawPeople = payload.people;
@@ -508,8 +514,9 @@ export function solveSettlement(payload) {
   return result;
 }
 
-// One view of a multiplied payload: its plan, or its own error. Only a strict
-// no-plan result becomes an error object; invalid input and resource failures throw.
+// Return a multiplied view's plan or its own strict-mode error. Only a strict
+// no-plan result becomes an error object. Invalid inputs and resource failures
+// throw exceptions.
 function solveView(people, multiplier, preferred, strict) {
   try {
     return toResult(people, multiplier, preferred, strict);

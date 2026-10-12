@@ -1,4 +1,4 @@
-"""FastAPI reference server for the settlement solver and the static web app."""
+"""Serve the static web app and optional settlement API with FastAPI."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from wire_min_splitter.optimizer import (
 
 
 def find_web_dir() -> Path:
-    """Return the web app directory: the packaged copy, else the repository one."""
+    """Find the packaged web directory, or use the repository's web directory."""
     package_dir = Path(__file__).resolve().parent
     for candidate in (package_dir / "web", package_dir.parents[1] / "web"):
         if candidate.is_dir():
@@ -60,7 +60,7 @@ class ParticipantInput(BaseModel):
 
 
 class SettlementRequest(BaseModel):
-    """Request body. Money is a decimal string or an exact integer, never a float."""
+    """Validate a settlement request with decimal strings or exact integer amounts."""
 
     people: list[ParticipantInput] = Field(min_length=1)
     preferred_multi_payers: list[str] = Field(default_factory=list)
@@ -85,7 +85,7 @@ async def healthcheck() -> dict[str, str]:
 
 @app.post("/api/settle")
 async def settle(payload: SettlementRequest) -> dict[str, object]:
-    """Solve a settlement in a worker thread (the search can be CPU heavy)."""
+    """Calculate a settlement in a worker thread to keep the API responsive."""
     data = {
         "people": [
             {
