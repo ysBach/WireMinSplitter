@@ -60,10 +60,10 @@ The rounded-down values add up to −2, so $k=2$. All three remainders are ⅔. 
 
 ## 4. Define the best plan
 
-A plan is a list of transfers. Each transfer goes from one payer to one receiver. The tool gives each plan a score of two numbers:
+A plan is a list of transfers. Each transfer goes from one payer to one receiver. The tool gives each plan a score $(C,B)$:
 
 $$
-\operatorname{lexmin}\,(C, B), \qquad B = \sum_{i \in U} \max(0,\, d_i - 1)
+B = \sum_{i \in U} \max(0,\, d_i - 1)
 $$
 
 - $C$: Number of transfers. The result shows it as Transactions.
@@ -71,36 +71,30 @@ $$
 - $d_{i}$: Number of transfers that payer $i$ sends
 - $U$: Payers that are not marked Preferred Multi-Payer
 
-The tool picks the plan with the smallest $C$. If plans tie on $C$, it picks the plan with the smallest $B$. In the formulas, lexmin means this order.
+The tool picks the plan with the smallest $C$. If plans tie on $C$, it picks the plan with the smallest $B$.
 
 Strict preference mode adds a rule: each payer in $U$ sends at most 1 transfer. Receivers have no limit. If no plan obeys this rule, the result shows a no-plan error.
 
 ## 5. Search the plans
 
-The search builds a plan one transfer at a time. It tries every useful next transfer, depth first, and keeps the best score.
+The search builds a plan one transfer at a time. At each step, it does this:
 
-A state $S$ shows what is still open. Payer $i$ still owes $a_{i}$. Receiver $j$ still waits for $r_{j}$. Each payer also has two flags: preferred, and sent (it already sent a transfer).
+1. Pick a payer and a receiver who both still have an open amount.
+2. Send the smaller of the two open amounts. This settles the payer, the receiver, or both.
+3. Go back to step 1 until no open amount is left. Each step settles at least 1 person, so the search always ends.
 
-A move sends $\min (a_{i},r_{j})$ from payer $i$ to receiver $j$. This settles payer $i$, receiver $j$, or both. So each move removes at least 1 person, and the search always ends.
+The search tries every choice at each step and keeps the plan with the best score. It counts the score as it goes. Each transfer adds 1 to $C$. A transfer also adds 1 to $B$ if its payer is in $U$ and already sent a transfer.
 
-$$
-\bigl(C(S),\, B(S)\bigr) = \operatorname*{lexmin}_{(i,j)} \bigl(1 + C(S_{ij}),\; e_i + B(S_{ij})\bigr)
-$$
+In strict preference mode, the search never makes a transfer that adds to $B$, so no payer in $U$ sends twice. It drops any choice that leaves no valid plan.
 
-- $S_{ij}$: State after the move from payer $i$ to receiver $j$
-- $e_{i}$: 1 if payer $i$ is in $U$ and its sent flag is on, otherwise 0
+Four shortcuts make the search faster without changing the result:
 
-An empty state $\varnothing$ has the score $(0,0)$. The search skips a move if the state after it has no valid plan. In strict preference mode, it also skips every move with $e_{i}=1$.
+- One payer or one receiver left: every open person must deal with that one person. The search computes the score directly and applies the strict rule.
+- Equal choices: two payers are equal if they have the same open amount and the same flags (preferred, already sent). Receivers are equal if they have the same open amount. The search tries equal choices only once.
+- Memory: the search saves the best score for each situation that it solves. If the same situation comes back, it reuses that score.
+- Lower bound: every open payer needs at least 1 more transfer, and so does every open receiver. So the rest of the plan has at least as many transfers as the larger of these two groups. If even this minimum makes $C$ larger than the best $C$ found so far for this situation, the search skips the choice. A tie stays, so $B$ can still decide.
 
-These shortcuts make the search faster:
-
-- One payer or one receiver left: each open person must connect to that person. A direct formula gives $C$ and $B$ and applies the strict rule.
-- Equal choices: payers are equal if their amounts and both flags match. Receivers are equal if their amounts match. The search tries equal choices only once.
-- Memory: the search stores the score of each solved state and reuses it. The key is the sorted payers and the sorted receivers.
-- Lower bound: let $P'$ and $R'$ be the open payers and receivers after a move. Each of them needs at least 1 more transfer. So at least $\max (|P'|,|R'|)$ more transfers are necessary.
-- Pruning: the search skips a move if $1+\max (|P'|,|R'|)$ is more than the best $C$ found so far for this state. A tie stays, so $B$ can still decide.
-
-If two moves give the same score, the search keeps the first one. It uses a fixed order: amount, then flags, then name. So the same input always gives the same plan.
+If two plans have the same score, the search keeps the one that comes first in a fixed order: amount, then flags, then name. So the same input always gives the same plan.
 
 ## 6. Why the plan is optimal
 
@@ -108,9 +102,9 @@ Claim: the search returns the smallest score $(C,B)$ for the cent balances. Draw
 
 1. Remove cycles. Suppose some edges form a cycle (ignore their directions). Add $+\delta$ and $-\delta$ to the cycle edges in turn. Each person on the cycle gets one $+\delta$ and one $-\delta$, so no balance changes.
 2. Set $\delta$ to the smallest amount on the $-\delta$ edges. Then at least 1 edge drops to 0, and the plan has fewer transfers. No payer sends more transfers, so the strict rule still holds. So an optimal plan has no cycle. Its graph is a forest.
-3. Find a leaf. A forest with at least 1 edge has a leaf: a person with exactly 1 transfer. That transfer carries the leaf's full open amount. The other person's amount is at least as large. So the transfer is $\min (a_{i},r_{j})$, a move that the search tries (or an equal choice).
-4. Shrink the problem. Remove that transfer. The rest of the plan settles the smaller state $S_{ij}$ with the score $(C-1,B-e_{i})$. The same argument applies to $S_{ij}$, so the search finds a score there that is at least this good. Each round removes at least 1 person, so the argument ends.
-5. Check the shortcuts. Pruning skips only moves that cannot win. The other shortcuts give exact scores. So the search returns the optimal score $(C,B)$.
+3. Find a leaf. A forest with at least 1 edge has a leaf: a person with exactly 1 transfer. That transfer carries the leaf's full open amount. The other person's open amount is at least as large. So the transfer sends the smaller of the two open amounts. That is a choice that the search tries (or an equal choice).
+4. Shrink the problem. Remove that transfer. The rest of the plan settles the amounts that are still open. Its score is the full score minus the share of the removed transfer. The same argument applies to this smaller problem, so the search finds a score there that is at least this good. Each round removes at least 1 person, so the argument ends.
+5. Check the shortcuts. The lower bound skips only choices that cannot win. The other shortcuts give exact scores. So the search returns the smallest score $(C,B)$.
 
 Scope: the plan is optimal for the cent balances $c_{i}$, among plans in which each transfer goes from a payer to a receiver. The tool makes no claim about other kinds of plan. Other plans can have the same score.
 
