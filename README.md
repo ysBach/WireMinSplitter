@@ -12,6 +12,7 @@ Languages: [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](RE
 3. Mark each person who may send more than one transfer as Preferred Multi-Payer.
 4. Optional: turn on Strict preference mode. Then only marked people can send more than one transfer.
 5. Read the transfers. Use Copy Results or Screenshot to share them.
+6. To share the filled-in calculator, copy the address after editing. Anyone with that link can reopen that version of the split.
 
 The app calculates in your browser. It sends no names or amounts to a server.
 A supporting browser can install the app. The app works offline after the browser caches all app files.

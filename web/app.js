@@ -1555,10 +1555,10 @@ function applyAdjustmentsStateToRow(row) {
   }
 }
 
-function addRow(data = {}) {
+function createParticipantRow(data) {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
   row.querySelector(".name").value = data.name ?? "";
-  row.querySelector(".repeat").value = String(parseRepeatCount(data.repeat ?? "1") || 1);
+  row.querySelector(".repeat").value = data.repeat ?? "1";
   row.querySelector(".spent").value = data.spent ?? "0";
   row.querySelector(".spent").step = formatRoundingUnit(spentStepDigits());
   row.querySelector(".extra-pay").value = data.extraPay ?? "0";
@@ -1603,10 +1603,14 @@ function addRow(data = {}) {
     scheduleAutoCalculate({ immediate: true });
   });
 
-  tbody.appendChild(row);
   applyDragStateToRow(row);
   applyRepeatStateToRow(row);
   applyAdjustmentsStateToRow(row);
+  return row;
+}
+
+function addRow(data = {}) {
+  tbody.appendChild(createParticipantRow(data));
   syncPeopleCountInput();
   updateAllRowAriaLabels();
 }
@@ -1752,7 +1756,7 @@ function invalidatePendingState() {
 }
 
 function scheduleAutoCalculate(options = {}) {
-  const { immediate = false } = options;
+  const { immediate = false, updateLink = true } = options;
   if (autoCalculateTimer) {
     clearTimeout(autoCalculateTimer);
     autoCalculateTimer = null;
@@ -1761,15 +1765,16 @@ function scheduleAutoCalculate(options = {}) {
   // Immediate invalidation on every input/structural change
   invalidatePendingState();
 
-  if (immediate) {
-    void calculate({ silentEmpty: true });
-    return;
-  }
-
-  autoCalculateTimer = window.setTimeout(() => {
+  const run = () => {
     autoCalculateTimer = null;
+    if (updateLink) updateSplitLink();
     void calculate({ silentEmpty: true });
-  }, AUTO_CALC_DEBOUNCE_MS);
+  };
+  if (immediate) {
+    run();
+  } else {
+    autoCalculateTimer = window.setTimeout(run, AUTO_CALC_DEBOUNCE_MS);
+  }
 }
 
 function shiftRoundingDigits(kind, delta) {
@@ -1787,6 +1792,7 @@ function shiftRoundingDigits(kind, delta) {
   }
   refreshRoundingControls();
   if (lastResultData) {
+    updateSplitLink();
     renderResult(lastResultData);
   } else {
     scheduleAutoCalculate({ immediate: true });
@@ -2114,6 +2120,7 @@ afterRoundingRightButton.addEventListener("click", () => {
 });
 numberStyleSelect.addEventListener("change", () => {
   setNumberStyle(numberStyleSelect.value);
+  updateSplitLink();
 });
 copyResultsButton.addEventListener("click", () => {
   void copyResults();
@@ -2191,17 +2198,102 @@ window.addEventListener("online", updateOfflineBadge);
 window.addEventListener("offline", updateOfflineBadge);
 updateOfflineBadge();
 
-// Initialize initial state
-for (let index = 0; index < INITIAL_PARTICIPANT_COUNT; index += 1) {
-  addRow({ spent: "0", extraPay: "0", extraGet: "0", preferred: false });
+// A name starts a row in the version 1 fragment. Its optional fields follow it.
+// Keep raw input strings so copying a link also preserves precision and unfinished edits.
+const splitRowFields = new Map([
+  ["spent", [".spent", "0"]],
+  ["repeat", [".repeat", "1"]],
+  ["extraPay", [".extra-pay", "0"]],
+  ["extraGet", [".extra-get", "0"]],
+]);
+const splitToggles = new Map([
+  ["strict", strictPreferenceToggle],
+  ["repeatEnabled", repeatToggle],
+  ["extraPayEnabled", extraPayToggle],
+  ["extraGetEnabled", extraGetToggle],
+]);
+
+function updateSplitLink() {
+  const params = new URLSearchParams({ split: "1" });
+  for (const [key, toggle] of splitToggles) {
+    if (toggle.checked) params.set(key, "1");
+  }
+  if (multiplierInput.value !== "1") params.set("multiplier", multiplierInput.value);
+  if (numberStyle !== DEFAULT_NUMBER_STYLE) params.set("format", numberStyle);
+  if (beforeRoundingDigits !== DEFAULT_ROUNDING_DIGITS) params.set("before", beforeRoundingDigits);
+  if (afterRoundingDigits !== DEFAULT_ROUNDING_DIGITS) params.set("after", afterRoundingDigits);
+  for (const row of rowList()) {
+    params.append("name", row.querySelector(".name").value);
+    for (const [key, [selector, initial]] of splitRowFields) {
+      const value = row.querySelector(selector).value;
+      if (value !== initial) params.append(key, value);
+    }
+    if (row.querySelector(".preferred").checked) params.append("preferred", "1");
+  }
+  const hash = "#" + params.toString();
+  if (location.hash !== hash) {
+    try {
+      history.replaceState(history.state, "", hash);
+    } catch (error) {
+      console.warn("Could not update the split URL.", error);
+    }
+  }
 }
-resetNames(nameResetModeSelect.value, { skipWarning: true });
-syncPeopleCountInput();
-setNumberStyle(detectInitialNumberStyle(), { persist: false, rerender: false });
+
+function readSplitRows(params) {
+  const rows = [];
+  let row;
+  for (const [key, value] of params) {
+    if (key === "name") {
+      row = { name: value };
+      rows.push(row);
+    } else if (row && splitRowFields.has(key)) {
+      row[key] = value;
+    } else if (row && key === "preferred") {
+      row.preferred = value === "1";
+    }
+  }
+  return rows;
+}
+
+function readLinkRounding(value) {
+  if (!value) return DEFAULT_ROUNDING_DIGITS;
+  const digits = Number(value);
+  return Number.isInteger(digits) && digits >= MIN_ROUNDING_DIGITS && digits <= MAX_ROUNDING_DIGITS
+    ? digits : DEFAULT_ROUNDING_DIGITS;
+}
+
+function loadSplitFromAddress() {
+  const fragment = new URLSearchParams(location.hash.slice(1));
+  const shared = fragment.get("split") === "1";
+  const params = shared ? fragment : new URLSearchParams();
+  for (const [key, toggle] of splitToggles) {
+    toggle.checked = params.get(key) === "1";
+  }
+  multiplierInput.value = params.get("multiplier") ?? "1";
+  beforeRoundingDigits = readLinkRounding(params.get("before"));
+  afterRoundingDigits = readLinkRounding(params.get("after"));
+  setNumberStyle(shared ? params.get("format") : detectInitialNumberStyle(), { persist: false, rerender: false });
+
+  const rows = shared ? readSplitRows(params) : Array.from({ length: INITIAL_PARTICIPANT_COUNT },
+    (_, index) => ({ name: buildNameFromMode(nameResetModeSelect.value, index) }));
+  const body = document.createDocumentFragment();
+  for (const data of rows) body.appendChild(createParticipantRow(data));
+  tbody.replaceChildren(body);
+  hasUserEditedInputs = shared;
+  syncPeopleCountInput();
+  updateAllRowAriaLabels();
+  refreshRoundingControls();
+  refreshRoundingModeUI();
+  refreshRepeatState();
+  refreshAdjustmentsState();
+  scheduleAutoCalculate({ immediate: true, updateLink: false });
+}
+
 setLanguage(detectInitialLanguage(), { persist: false });
-refreshDragState();
-refreshRepeatState();
-refreshAdjustmentsState();
-setResultToolsEnabled(false);
-clearResultToolsFeedback();
-scheduleAutoCalculate({ immediate: true });
+loadSplitFromAddress();
+window.addEventListener("hashchange", () => {
+  if (!location.hash || new URLSearchParams(location.hash.slice(1)).has("split")) {
+    loadSplitFromAddress();
+  }
+});

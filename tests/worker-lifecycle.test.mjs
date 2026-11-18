@@ -36,6 +36,7 @@ function harness() {
     AUTO_CALC_DEBOUNCE_MS: 250,
     validation: { payload: { rows: [{ name: "A", repeat: 1000000, spent: "1e26", preferred: false }], multiplier: "1", strict_preference: false } },
     collectAndValidatePayload() { return context.validation; },
+    updateSplitLink() {},
     hideResultAndError() { rendered.length = 0; },
     showCalculatingIndicator() {},
     hideCalculatingIndicator() {},

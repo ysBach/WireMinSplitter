@@ -43,6 +43,21 @@ test("Headers: CSP permits self, worker, blob, and forbids unsafe-inline scripts
   assert.match(headers, /img-src\s+'self'\s+data:\s+blob:/);
 });
 
+test("version 1 split links retain ordered rows, exact amounts, and unfinished edits", () => {
+  const app = fs.readFileSync(path.join(webDir, "app.js"), "utf8");
+  const fields = app.slice(app.indexOf("const splitRowFields"), app.indexOf("const splitToggles"));
+  const reader = app.slice(app.indexOf("function readSplitRows"), app.indexOf("function readLinkRounding"));
+  const readRows = new Function(fields + reader + "; return readSplitRows;")();
+  const params = new URLSearchParams("split=1&name=윤수%2B%26%23&spent=1.000000000000000001e%2B30" +
+    "&repeat=2&name=&spent=&name=Bob&extraPay=2.30&extraGet=1&preferred=1");
+  assert.deepEqual(readRows(params), [
+    { name: "윤수+&#", spent: "1.000000000000000001e+30", repeat: "2" },
+    { name: "", spent: "" },
+    { name: "Bob", extraPay: "2.30", extraGet: "1", preferred: true },
+  ]);
+  assert.deepEqual(readRows(new URLSearchParams("split=1")), []);
+});
+
 test("Build Script Sanity Check: fails when critical files are missing, succeeds when present", () => {
   const tmpDir = fs.mkdtempSync(path.join("/tmp", "moneysplit-build-test-"));
   const mockWebDir = path.join(tmpDir, "web");
