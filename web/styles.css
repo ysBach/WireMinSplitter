@@ -246,6 +246,11 @@ input[type="number"] {
   border-radius: 7px;
 }
 
+/* html2canvas cannot parse iOS Safari's default color(srgb …) for disabled inputs. */
+input:disabled {
+  color: #575757;
+}
+
 input.repeat {
   min-width: 4.2rem;
   width: 4.2rem;
