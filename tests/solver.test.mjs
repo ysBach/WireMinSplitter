@@ -80,6 +80,16 @@ test("adjustments are checked before the multiplier is applied", () => {
   assert.throws(() => solveSettlement({ people, multiplier: "1000" }), /Infeasible adjustments/);
 });
 
+test("equal-share totals use each repeated person's spending before individual adjustments", () => {
+  const plan = solveSettlement({ multiplier: "0.5", rows: [
+    { name: "Group", repeat: 2, spent: "3.25", extra_pay: "1" },
+    { name: "Guest", spent: "0", extra_get: "2" },
+  ] });
+  assert.equal(plan.balances.length, 3);
+  assert.deepEqual(plan.original.summary.total_spent, { numerator: "13", denominator: "2" });
+  assert.deepEqual(plan.summary.total_spent, { numerator: "13", denominator: "4" });
+});
+
 test("very large values stay exact", () => {
   const result = solveSettlement({ people: [{ name: "A", spent: "1e26" }, { name: "B" }] });
   assert.equal(result.transfers[0].amount, "50000000000000000000000000.00");

@@ -164,6 +164,7 @@ const TRANSLATIONS = {
     "error.settlement_failed": "Settlement failed.",
     "error.network": "Network error: {error}",
     "summary.template": "Transactions: {transactions} | Burden penalty: {burdenPenalty}",
+    "summary.equal_share": "Total {total} ÷ {count} {sign} {share} per person",
     "summary.no_transfers": "No transfers needed.",
     "confirm.reset_names": "This will erase Name inputs you entered. Do you want to continue?",
     "message.copy_success": "Results copied.",
@@ -363,6 +364,7 @@ const TRANSLATIONS = {
     "error.settlement_failed": "정산 계산에 실패했습니다.",
     "error.network": "네트워크 오류: {error}",
     "summary.template": "송금 건수: {transactions} | 부담 패널티: {burdenPenalty}",
+    "summary.equal_share": "총 {total} ÷ {count}명 {sign} 1인당 {share}",
     "summary.no_transfers": "송금이 필요 없습니다.",
     "confirm.reset_names": "이 작업은 입력한 이름을 지웁니다. 계속 진행할까요?",
     "message.copy_success": "결과를 복사했습니다.",
@@ -562,6 +564,7 @@ const TRANSLATIONS = {
     "error.settlement_failed": "精算計算に失敗しました。",
     "error.network": "ネットワークエラー: {error}",
     "summary.template": "送金件数: {transactions} | 負担ペナルティ: {burdenPenalty}",
+    "summary.equal_share": "合計{total} ÷ {count}人 {sign} 1人あたり{share}",
     "summary.no_transfers": "送金は不要です。",
     "confirm.reset_names": "入力済みの名前が消去されます。続行しますか？",
     "message.copy_success": "結果をコピーしました。",
@@ -761,6 +764,7 @@ const TRANSLATIONS = {
     "error.settlement_failed": "结算失败。",
     "error.network": "网络错误: {error}",
     "summary.template": "转账笔数: {transactions} | 负担惩罚: {burdenPenalty}",
+    "summary.equal_share": "总支出 {total} ÷ {count} 人 {sign} 人均 {share}",
     "summary.no_transfers": "无需转账。",
     "confirm.reset_names": "此操作会清除你输入的姓名。是否继续？",
     "message.copy_success": "结果已复制。",
@@ -2038,6 +2042,10 @@ function selectedCurrency(original = false) {
 
 function formatPlanAmount(amount, digits, currency) {
   const rounded = roundBigIntCents(decimalToBigIntCents(amount), digits);
+  return formatCurrencyAmount(rounded, digits, currency);
+}
+
+function formatCurrencyAmount(rounded, digits, currency, separator = " ") {
   const unit = currency.startsWith(CUSTOM_CURRENCY_PREFIX)
     ? currency.slice(CUSTOM_CURRENCY_PREFIX.length).trim()
     : CURRENCY_UNITS[currency];
@@ -2046,7 +2054,31 @@ function formatPlanAmount(amount, digits, currency) {
     return (rounded < 0n ? "-" : "") + unit + formatRoundedAmountBigInt(magnitude, digits);
   }
   const value = formatRoundedAmountBigInt(rounded, digits);
-  return unit ? value + " " + unit : value;
+  return unit ? value + separator + unit : value;
+}
+
+function summaryLines(plan, digits, currency) {
+  const summary = plan.summary;
+  const details = t("summary.template", { transactions: summary.transactions, burdenPenalty: summary.burden_penalty });
+  if (!summary.total_spent) return [details];
+
+  const count = plan.balances.length;
+  // Divide the exact total before rounding either amount to the display unit.
+  const scale = 10n ** BigInt(Math.max(digits, 0));
+  const numerator = BigInt(summary.total_spent.numerator) * scale;
+  const denominator = BigInt(summary.total_spent.denominator) * 10n ** BigInt(Math.max(-digits, 0));
+  const shareDenominator = denominator * BigInt(count);
+  const separator = ["KRW", "JPY", "CNY"].includes(currency) ? "" : " ";
+  function amount(divisor) {
+    const rounded = (2n * numerator + divisor) / (2n * divisor);
+    if (digits > 0 && rounded % scale === 0n) return formatCurrencyAmount(rounded / scale, 0, currency, separator);
+    return formatCurrencyAmount(rounded, digits, currency, separator);
+  }
+  const line = t("summary.equal_share", {
+    total: amount(denominator), count, share: amount(shareDenominator),
+    sign: numerator % shareDenominator === 0n ? "=" : "≈",
+  });
+  return [line, details];
 }
 
 function formatTransfer(transfer, digits, currency) {
@@ -2094,9 +2126,7 @@ function renderPlanIntoElements(planData, digits, elements, currency = selectedC
   }
 
   summaryEl.classList.remove("error");
-  const transactions = planData.summary.transactions;
-  const burdenPenalty = planData.summary.burden_penalty;
-  summaryEl.textContent = t("summary.template", { transactions, burdenPenalty });
+  summaryEl.textContent = summaryLines(planData, digits, currency).join("\n");
 
   for (const item of planData.balances || []) {
     const formatted = formatPlanAmount(item.net, digits, currency);
@@ -2265,9 +2295,7 @@ function appendPlanLines(lines, heading, planData, digits, currency = selectedCu
     lines.push(errMsg);
     return;
   }
-  const transactions = planData.summary.transactions;
-  const burdenPenalty = planData.summary.burden_penalty;
-  lines.push(t("summary.template", { transactions, burdenPenalty }));
+  lines.push(...summaryLines(planData, digits, currency));
   const notice = roundingMessage(digits, currency);
   if (notice) lines.push(notice);
   lines.push("");

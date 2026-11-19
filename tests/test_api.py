@@ -14,7 +14,11 @@ def test_settle_returns_summary_balances_and_transfers() -> None:
 
     assert response.status_code == 200
     data = response.json()
-    assert data["summary"] == {"transactions": 2, "burden_penalty": 0}
+    assert data["summary"] == {
+        "transactions": 2,
+        "burden_penalty": 0,
+        "total_spent": {"numerator": "1", "denominator": "1"},
+    }
     assert [b["net"] for b in data["balances"]] == ["0.67", "-0.33", "-0.34"]
 
 

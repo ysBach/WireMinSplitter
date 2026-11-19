@@ -423,6 +423,8 @@ tr.drop-after td {
   color: var(--error);
 }
 
+#summary, #original-summary, #multiplied-summary { white-space: pre-line; }
+
 #summary,
 #balances,
 #transfers {

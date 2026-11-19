@@ -88,6 +88,7 @@ class SettlementComputation:
     transaction_count: int
     burden_penalty: int
     rounding_notice: bool = False
+    total_spent: Fraction = Fraction(0)
 
 
 _NAME_WHITESPACE = (
@@ -194,7 +195,7 @@ class _Person:
 
 def _balanced_nets(
     people: Sequence[_Person], multiplier: Fraction
-) -> tuple[list[NetBalance], bool]:
+) -> tuple[list[NetBalance], bool, Fraction]:
     """Round exact balances to cents while keeping their sum zero.
 
     Each rounded balance differs from its exact value by less than one cent.
@@ -207,7 +208,7 @@ def _balanced_nets(
     remaining cents to the largest fractional remainders. Resolve equal
     remainders by name in Unicode code-point order.
 
-    Return the balances and a flag for any exact balance that required rounding.
+    Return the balances, a rounding flag, and total spending after multiplication.
     """
     if not people:
         raise SettlementError("At least one participant is required.")
@@ -224,7 +225,8 @@ def _balanced_nets(
         raise SettlementError(
             "Infeasible adjustments: total extra_get must equal total extra_pay."
         )
-    share = sum((p.spent for p in people), _ZERO) / len(people)
+    total = sum((p.spent for p in people), _ZERO)
+    share = total / len(people)
     ideals = [100 * multiplier * (p.spent - share + p.get - p.pay) for p in people]
     floors = [v.numerator // v.denominator for v in ideals]
     missing = -sum(floors)
@@ -236,7 +238,11 @@ def _balanced_nets(
     for k in order[:missing]:
         floors[k] += 1
     notice = any(v.denominator != 1 for v in ideals)
-    return [NetBalance(p.name, c) for p, c in zip(people, floors)], notice
+    return (
+        [NetBalance(p.name, c) for p, c in zip(people, floors)],
+        notice,
+        total * multiplier,
+    )
 
 
 def _people_from_cents(members: Sequence[PartyMember]) -> list[_Person]:
@@ -446,9 +452,11 @@ def _solve_people(
     preferred: Sequence[str],
     strict: bool,
 ) -> SettlementComputation:
-    balances, notice = _balanced_nets(people, multiplier)
+    balances, notice, total_spent = _balanced_nets(people, multiplier)
     transfers, penalty = optimize_transfers(balances, preferred, strict)
-    return SettlementComputation(balances, transfers, len(transfers), penalty, notice)
+    return SettlementComputation(
+        balances, transfers, len(transfers), penalty, notice, total_spent
+    )
 
 
 def solve_settlement(
@@ -500,10 +508,18 @@ def solve_source_settlement(
 
 
 def _to_dict(result: SettlementComputation) -> dict[str, object]:
+    try:
+        total_spent = {
+            "numerator": str(result.total_spent.numerator),
+            "denominator": str(result.total_spent.denominator),
+        }
+    except ValueError as exc:
+        raise SettlementResourceError("Amount has too many digits to format.") from exc
     return {
         "summary": {
             "transactions": result.transaction_count,
             "burden_penalty": result.burden_penalty,
+            "total_spent": total_spent,
         },
         "balances": [
             {

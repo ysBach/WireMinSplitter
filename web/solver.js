@@ -183,6 +183,7 @@ function balancedNets(people, multiplier) {
   for (let k = 0; missing > 0n; k += 1, missing -= 1n) cents[order[k]] += 1n;
   return {
     balances: people.map((p, k) => ({ name: p.name, cents: cents[k] })),
+    totalSpent: mul(total, multiplier),
     notice: ideals.some((v) => v.d !== 1n),
   };
 }
@@ -463,11 +464,15 @@ export function expandRows(rows) {
 const orDefault = (value, fallback) => (value === undefined || value === null || value === "" ? fallback : value);
 
 function toResult(people, multiplier, preferred, strict) {
-  const { balances, notice } = balancedNets(people, multiplier);
+  const { balances, notice, totalSpent } = balancedNets(people, multiplier);
   const { transfers, penalty } = optimizeTransfers(balances, preferred, strict);
   const accounts = new Map(people.filter((p) => p.account).map((p) => [p.name, p.account]));
   return {
-    summary: { transactions: transfers.length, burden_penalty: penalty },
+    summary: {
+      transactions: transfers.length,
+      burden_penalty: penalty,
+      total_spent: { numerator: String(totalSpent.n), denominator: String(totalSpent.d) },
+    },
     balances: balances.map((b) => ({
       name: b.name,
       net: formatCents(b.cents),

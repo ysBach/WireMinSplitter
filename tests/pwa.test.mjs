@@ -302,14 +302,16 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
   const appCode = fs.readFileSync(path.join(webDir, "app.js"), "utf8");
 
   const fns = new Function(
-    "const numberStyle = 'comma_period'; const t = (k, vars = {}) => { if (k === 'summary.template') return 'Transactions: ' + vars.transactions + ' | Burden penalty: ' + vars.burdenPenalty; return k; };" +
+    "const numberStyle = 'comma_period'; const t = (k, vars = {}) => {" +
+    "if (k === 'summary.equal_share') return [vars.total, '÷', vars.count, vars.sign, vars.share].join(' ');" +
+    "if (k === 'summary.template') return 'Transactions: ' + vars.transactions + ' | Burden penalty: ' + vars.burdenPenalty; return k; };" +
     appCode.slice(appCode.indexOf("function parseDecimalScientific"), appCode.indexOf("function spentStepDigits")) +
     appCode.slice(appCode.indexOf("function roleLabel"), appCode.indexOf("function parseDecimalScientific")) +
     appCode.slice(appCode.indexOf("const CURRENCY_UNITS"), appCode.indexOf("\n", appCode.indexOf("const CUSTOM_CURRENCY_PREFIX"))) +
     "const selectedCurrency = () => 'KRW';" +
     appCode.slice(appCode.indexOf("function formatPlanAmount"), appCode.indexOf("function renderResult")) +
     appCode.slice(appCode.indexOf("function appendPlanLines"), appCode.indexOf("function resultLines")) +
-    "; return { formatPlanAmount, renderPlanIntoElements, appendPlanLines, transferClipboardText };"
+    "; return { formatPlanAmount, renderPlanIntoElements, appendPlanLines, transferClipboardText, summaryLines };"
   )();
 
   const { formatPlanAmount, renderPlanIntoElements, appendPlanLines } = fns;
@@ -351,22 +353,27 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
   };
 
   const successPlan = {
-    summary: { transactions: 1, burden_penalty: 0 },
-    balances: [{ name: "Alice", net: "10.00", role: "receiver" }],
+    summary: { transactions: 1, burden_penalty: 0, total_spent: { numerator: "20", denominator: "1" } },
+    balances: [{ name: "Alice", net: "10.00", role: "receiver" }, { name: "Bob", net: "-10.00", role: "payer" }],
     transfers: [{ from: "Bob", to: "Alice", amount: "10.00", receiverAccount: "Bank 001-02" }],
   };
   globalThis.document = { createElement: () => new MockElement() };
 
   renderPlanIntoElements(successPlan, 2, elements);
-  assert.equal(elements.summaryEl.textContent, "Transactions: 1 | Burden penalty: 0");
+  assert.equal(elements.summaryEl.textContent, "20원 ÷ 2 = 10원\nTransactions: 1 | Burden penalty: 0");
   assert.equal(elements.summaryEl.classList.contains("error"), false);
-  assert.equal(elements.balancesEl.children.length, 1);
+  assert.equal(elements.balancesEl.children.length, 2);
   assert.equal(elements.transfersEl.children.length, 1);
   const instruction = "Bob → Alice: 10.00 원 (Bank 001-02)";
   assert.equal(elements.transfersEl.children[0].textContent, instruction);
   const copied = [];
   appendPlanLines(copied, "", successPlan, 2);
+  assert.equal(copied[0], elements.summaryEl.textContent.split("\n")[0]);
   assert.ok(copied.includes("- " + instruction));
+
+  const fractionalPlan = { ...successPlan, summary: { ...successPlan.summary, total_spent: { numerator: "29", denominator: "1000" } } };
+  assert.equal(fns.summaryLines(fractionalPlan, 2, "USD")[0], "$0.03 ÷ 2 ≈ $0.01");
+  assert.equal(fns.summaryLines(fractionalPlan, 4, "USD")[0], "$0.0290 ÷ 2 = $0.0145");
 
   // Two adjacent groups and a single payment to the same receiver.
   const payments = [
