@@ -399,6 +399,44 @@ tr.drop-after td {
   font-variant-numeric: tabular-nums;
 }
 
+/* Join the first text line of each payment, even when account details wrap. */
+li[data-sender-branch] {
+  position: relative;
+  padding-inline-start: 1em;
+  line-height: 1.5;
+}
+
+li[data-sender-branch]::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0.15em;
+  inset-block: 0;
+  width: 0.55em;
+  border-inline-start: 1px solid var(--muted);
+}
+
+li[data-sender-branch="╭"]::before {
+  inset-block-start: 0.75em;
+  border-block-start: 1px solid var(--muted);
+  border-start-start-radius: 0.24em;
+}
+
+li[data-sender-branch="├"]::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0.15em;
+  inset-block-start: 0.75em;
+  width: 0.55em;
+  border-block-start: 1px solid var(--muted);
+}
+
+li[data-sender-branch="╰"]::before {
+  inset-block-end: auto;
+  height: 0.75em;
+  border-block-end: 1px solid var(--muted);
+  border-end-start-radius: 0.24em;
+}
+
 /* .hidden moved to bottom with !important */
 
 @media (max-width: 760px) {

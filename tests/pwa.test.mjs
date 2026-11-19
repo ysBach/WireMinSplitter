@@ -321,6 +321,7 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
   class MockElement {
     constructor() {
       this.textContent = "";
+      this.dataset = {};
       this._html = "";
       this.children = [];
       this.classList = {
@@ -364,6 +365,23 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
   const copied = [];
   appendPlanLines(copied, "", successPlan, 2);
   assert.ok(copied.includes("- " + instruction));
+
+  // Two adjacent groups and a single payment to the same receiver.
+  const payments = [
+    ["A", "X", "╭"], ["A", "Y", "╰"],
+    ["B", "X", "╭"], ["B", "Y", "├"], ["B", "Z", "╰"],
+    ["C", "Z", ""],
+  ];
+  const groupedPlan = {
+    summary: { transactions: payments.length, burden_penalty: 3 },
+    transfers: payments.map(([from, to]) => ({ from, to, amount: "1.00" })),
+  };
+  renderPlanIntoElements(groupedPlan, 2, elements);
+  const groupedCopy = [];
+  appendPlanLines(groupedCopy, "", groupedPlan, 2);
+  assert.deepEqual(elements.transfersEl.children.map(li => li.dataset.senderBranch || ""), payments.map(p => p[2]));
+  assert.deepEqual(groupedCopy.slice(-payments.length),
+    payments.map(([from, to, branch]) => (branch || "-") + " " + from + " → " + to + ": 1.00 원"));
 
   const errorPlan = {
     error: { message: "No feasible settlement found with current strict preference constraints.", resource: false },

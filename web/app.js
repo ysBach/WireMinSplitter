@@ -1971,6 +1971,17 @@ function formatTransfer(transfer, digits, currency) {
   return transfer.from + " → " + transfer.to + ": " + amount + (digits < 0 ? " ~" : "") + account;
 }
 
+// The solver orders transfers by sender, then receiver.
+function senderBranch(transfers, index) {
+  const sender = transfers[index].from;
+  const previous = transfers[index - 1]?.from === sender;
+  const next = transfers[index + 1]?.from === sender;
+  if (previous && next) return "├";
+  if (next) return "╭";
+  if (previous) return "╰";
+  return "";
+}
+
 function renderPlanIntoElements(planData, digits, elements, currency = selectedCurrency()) {
   const { summaryEl, balancesEl, transfersEl } = elements;
   balancesEl.innerHTML = "";
@@ -1995,13 +2006,16 @@ function renderPlanIntoElements(planData, digits, elements, currency = selectedC
     balancesEl.appendChild(li);
   }
 
-  for (const transfer of planData.transfers || []) {
+  const transfers = planData.transfers || [];
+  for (const [index, transfer] of transfers.entries()) {
     const li = document.createElement("li");
+    const branch = senderBranch(transfers, index);
+    if (branch) li.dataset.senderBranch = branch;
     li.textContent = formatTransfer(transfer, digits, currency);
     transfersEl.appendChild(li);
   }
 
-  if ((planData.transfers || []).length === 0) {
+  if (transfers.length === 0) {
     const li = document.createElement("li");
     li.textContent = t("summary.no_transfers");
     transfersEl.appendChild(li);
@@ -2074,10 +2088,12 @@ function appendPlanLines(lines, heading, planData, digits, currency = selectedCu
   }
   lines.push("");
   lines.push(t("section.transfers"));
-  for (const transfer of planData.transfers || []) {
-    lines.push("- " + formatTransfer(transfer, digits, currency));
+  const transfers = planData.transfers || [];
+  for (const [index, transfer] of transfers.entries()) {
+    const marker = senderBranch(transfers, index) || "-";
+    lines.push(marker + " " + formatTransfer(transfer, digits, currency));
   }
-  if ((planData.transfers || []).length === 0) {
+  if (transfers.length === 0) {
     lines.push("- " + t("summary.no_transfers"));
   }
 }
