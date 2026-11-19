@@ -309,7 +309,7 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
     "const selectedCurrency = () => 'KRW';" +
     appCode.slice(appCode.indexOf("function formatPlanAmount"), appCode.indexOf("function renderResult")) +
     appCode.slice(appCode.indexOf("function appendPlanLines"), appCode.indexOf("function resultLines")) +
-    "; return { formatPlanAmount, renderPlanIntoElements, appendPlanLines };"
+    "; return { formatPlanAmount, renderPlanIntoElements, appendPlanLines, transferClipboardText };"
   )();
 
   const { formatPlanAmount, renderPlanIntoElements, appendPlanLines } = fns;
@@ -317,6 +317,8 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
   assert.equal(formatPlanAmount("1234.50", 2, "EUR"), "€1,234.50");
   assert.equal(formatPlanAmount("1234.50", 2, "custom:R&D credits"), "1,234.50 R&D credits");
   assert.equal(formatPlanAmount("1234.50", 2, "custom:"), "1,234.50");
+  assert.equal(fns.transferClipboardText({ from: "A", to: "B", amount: "1234.56", receiverAccount: "Bank 001-02" }, "KRW"), "1,234.56 원\nBank 001-02");
+  assert.equal(fns.transferClipboardText({ from: "A", to: "B", amount: "20.00" }, "USD"), "$20");
 
   class MockElement {
     constructor() {

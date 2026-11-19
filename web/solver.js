@@ -488,7 +488,7 @@ function toResult(people, multiplier, preferred, strict) {
 // Each multiplied view contains its plan or {error: {message, resource: false}}
 // when its strict plan is infeasible. Invalid inputs and resource failures throw
 // exceptions.
-export function solveSettlement(payload) {
+export function solveSettlement(payload, ladderSeed = null) {
   if (payload === null || typeof payload !== "object") throw new SettlementError("Payload must be an object.");
   let rawPeople = payload.people;
   let preferred = payload.preferred_multi_payers || [];
@@ -515,10 +515,96 @@ export function solveSettlement(payload) {
       get: parseDecimal(orDefault(item.extra_get, 0), "extra_get"),
     };
   });
-  if (cmpRat(factor, ONE) === 0) return toResult(people, ONE, preferred, strict);
-  const result = solveView(people, factor, preferred, strict);
-  result.original = solveView(people, ONE, preferred, strict);
+  const ladder = ladderSeed === null ? null : drawLadder(balancedNets(people, factor).balances, ladderSeed);
+  if (ladder?.winners) preferred = ladder.winners;
+  const single = cmpRat(factor, ONE) === 0;
+  const result = single && !ladder ? toResult(people, ONE, preferred, strict) : solveView(people, factor, preferred, strict);
+  if (!single) result.original = solveView(people, ONE, preferred, strict);
+  if (ladder) result.ladder = ladder;
   return result;
+}
+
+// Version 1 replay: shuffle the entrants, then add one bridge across each gap
+// in shuffled order. Following the bridges gives the priority order at the foot.
+function ladderLayout(names, seed) {
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw new SettlementError("Invalid ladder seed.");
+  let state = seed;
+  function shuffle(items) {
+    for (let i = items.length - 1; i > 0; i--) {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let n = Math.imul(state ^ (state >>> 15), state | 1);
+      n ^= n + Math.imul(n ^ (n >>> 7), n | 61);
+      const j = Math.floor(((n ^ (n >>> 14)) >>> 0) / 0x100000000 * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
+  }
+  const top = shuffle([...names]);
+  const rungs = shuffle(Array.from({ length: names.length - 1 }, (_, i) => i));
+  const bottom = [...top];
+  for (const i of rungs) [bottom[i], bottom[i + 1]] = [bottom[i + 1], bottom[i]];
+  return { top, rungs, bottom };
+}
+
+export function drawLadder(balances, seed) {
+  const payers = balances.filter(b => b.cents < 0n).map(b => b.name).sort(compareCodePoints);
+  const first = optimizeTransfers(balances);
+  const count = first.transfers.length;
+  if (count === payers.length || payers.length < 2) return {};
+
+  function repeatSenders(plan) {
+    const seen = new Set();
+    const repeated = new Set();
+    for (const { payer } of plan.transfers) {
+      if (seen.has(payer)) repeated.add(payer);
+      seen.add(payer);
+    }
+    return [...repeated].sort(compareCodePoints);
+  }
+  const key = JSON.stringify;
+  const cache = new Map([[key(payers), repeatSenders(first)]]);
+  function feasibleTeam(allowed) {
+    const id = key(allowed);
+    if (!cache.has(id)) {
+      let team = null;
+      try {
+        const plan = optimizeTransfers(balances, allowed, true);
+        if (plan.transfers.length === count) team = repeatSenders(plan);
+      } catch (error) {
+        if (!(error instanceof SettlementInfeasibleError)) throw error;
+      }
+      cache.set(id, team);
+    }
+    return cache.get(id);
+  }
+  // Each minimal team can settle in exactly count transfers, and each member
+  // must send twice or more. Any other minimal team omits at least one member.
+  const teams = new Map();
+  const visited = new Set();
+  const pending = [payers];
+  while (pending.length) {
+    const allowed = pending.pop();
+    const id = key(allowed);
+    if (visited.has(id)) continue;
+    visited.add(id);
+    let team = feasibleTeam(allowed);
+    if (!team) continue;
+    for (const name of team) {
+      if (team.includes(name)) team = feasibleTeam(team.filter(n => n !== name)) ?? team;
+    }
+    teams.set(key(team), team);
+    for (const name of team) pending.push(allowed.filter(n => n !== name));
+  }
+  if (teams.size < 2) return {};
+  let options = [...teams.values()].map(team => new Set(team));
+  const entrants = payers.filter(name => options.some(team => team.has(name)) && options.some(team => !team.has(name)));
+  const layout = ladderLayout(entrants, seed);
+  for (const name of layout.bottom) {
+    const withName = options.filter(team => team.has(name));
+    if (withName.length) options = withName;
+    if (options.length === 1) break;
+  }
+  return { ...layout, winners: [...options[0]] };
 }
 
 // Return a multiplied view's plan or its own strict-mode error. Only a strict

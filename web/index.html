@@ -347,6 +347,8 @@
         <div class="result-head">
           <h2 data-i18n="section.result">Result</h2>
           <div class="result-tools">
+            <button id="draw-ladder" type="button" class="secondary compact"
+              data-i18n="button.ladder" data-i18n-title="tooltip.ladder">Draw multi-payers</button>
             <button
               id="copy-results"
               type="button"
@@ -384,13 +386,16 @@
           <p id="rounding-notice" class="rounding-notice hidden" data-i18n="notice.rounding">
             Note: Due to balanced-cent allocation, identical participants may differ by 0.01.
           </p>
-          <p id="approximate-notice" class="approximate-notice hidden" data-i18n="notice.approximate_display">
-            Approximate display only (not exact payment instructions; sums may not conserve).
-          </p>
+          <div id="ladder-panel" hidden>
+            <p id="ladder-status" role="status"></p>
+            <div id="ladder-chart" aria-hidden="true"></div>
+            <button id="ladder-manual" type="button" class="secondary compact" data-i18n="button.manual">Use manual preferences</button>
+          </div>
 
           <!-- Single panel when multiplier == 1 -->
           <div id="single-result-panel">
             <p id="summary"></p>
+            <p id="approximate-notice" class="approximate-notice" hidden></p>
             <h3 data-i18n="section.net_balances">Net Balances</h3>
             <ul id="balances"></ul>
             <h3 data-i18n="section.transfers">Transfers</h3>
@@ -402,6 +407,7 @@
             <div class="result-plan-card">
               <h3 class="plan-heading" data-i18n="heading.original_plan">Original Plan (Before Multiplier)</h3>
               <p id="original-summary"></p>
+              <p id="original-approximate" class="approximate-notice" hidden></p>
               <h4 data-i18n="section.net_balances">Net Balances</h4>
               <ul id="original-balances"></ul>
               <h4 data-i18n="section.transfers">Transfers</h4>
@@ -411,6 +417,7 @@
             <div class="result-plan-card" style="margin-top: 1.2rem; padding-top: 1rem; border-top: 1px dashed var(--line);">
               <h3 class="plan-heading" data-i18n="heading.multiplied_plan">Multiplied Plan (After Multiplier)</h3>
               <p id="multiplied-summary"></p>
+              <p id="multiplied-approximate" class="approximate-notice" hidden></p>
               <h4 data-i18n="section.net_balances">Net Balances</h4>
               <ul id="multiplied-balances"></ul>
               <h4 data-i18n="section.transfers">Transfers</h4>

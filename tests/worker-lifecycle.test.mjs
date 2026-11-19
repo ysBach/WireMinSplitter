@@ -29,6 +29,7 @@ function harness() {
     rendered,
     errors,
     activeWorker: null,
+    ladderSeed: null,
     activeRequestId: 0,
     requestSequence: 0,
     autoCalculateTimer: null,

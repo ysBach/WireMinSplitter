@@ -511,9 +511,44 @@ li[data-sender-branch="╰"]::before {
 }
 
 .approximate-notice {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #92400e;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+}
+
+.copy-transfer {
+  margin-inline-start: 0.6em;
+  padding: 0.2em 0.6em;
+  font: inherit;
+  font-size: 0.82em;
+  background: white;
+  border: 1px solid var(--line);
+  color: #0f766e;
+}
+.copy-transfer:hover { background: #e6f4f1; }
+
+#ladder-chart { overflow-x: auto; }
+.ladder-board {
+  width: calc(var(--lanes) * 5.5rem);
+  margin-block: 0.8rem;
+}
+.ladder-labels {
+  display: grid;
+  grid-template-columns: repeat(var(--lanes), minmax(0, 1fr));
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ladder-labels .drawn { color: #0f766e; font-weight: bold; }
+.ladder-board svg { display: block; width: 100%; fill: none; }
+.ladder-board .rail { stroke: var(--line); stroke-width: 2; }
+.ladder-board .drawn-path { stroke: #0f766e; stroke-width: 3; }
+@media (prefers-reduced-motion: no-preference) {
+  .ladder-board .drawn-path { animation: ladder-reveal 650ms ease-out; }
+  @keyframes ladder-reveal {
+    from { clip-path: inset(0 0 100% 0); }
+    to { clip-path: inset(0); }
+  }
 }
 
 .offline-badge {

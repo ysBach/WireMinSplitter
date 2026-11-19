@@ -14,9 +14,9 @@ function describe(error) {
 }
 
 self.onmessage = (event) => {
-  const { id, payload } = event.data ?? {};
+  const { id, payload, ladderSeed } = event.data ?? {};
   try {
-    self.postMessage({ id, result: solveSettlement(payload) });
+    self.postMessage({ id, result: solveSettlement(payload, ladderSeed) });
   } catch (error) {
     self.postMessage({ id, error: describe(error) });
   }

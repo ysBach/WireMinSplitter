@@ -177,7 +177,15 @@ const TRANSLATIONS = {
     "error.duplicate_name": "Duplicate participant name: {name}",
     "error.repeat_not_safe_integer": "Repeat count must be a positive safe integer.",
     "notice.rounding": "Note: Due to balanced-cent allocation, identical participants may differ by 0.01.",
-    "notice.approximate_display": "Approximate display only (not exact payment instructions; sums may not conserve).",
+    "notice.approximate_display": "Rounded to the nearest {unit}. Totals may differ.",
+    "button.copy_transfer": "Copy",
+    "tooltip.copy_transfer": "Copy exact amount and receiving account for {from} → {to}",
+    "message.transfer_copied": "Copied.",
+    "button.ladder": "Draw multi-payers",
+    "button.manual": "Use manual preferences",
+    "tooltip.ladder": "Use the draw instead of manual preferences for the final amounts.",
+    "ladder.result": "Multi-payers: {names}",
+    "ladder.fixed": "The same people must make the extra transfers, or none are needed.",
     "status.offline": "Offline",
     "aria.row_name": "Row {row} Name",
     "aria.row_spent": "Row {row} Spent",
@@ -364,7 +372,15 @@ const TRANSLATIONS = {
     "error.duplicate_name": "중복된 참가자 이름입니다: {name}",
     "error.repeat_not_safe_integer": "반복 횟수는 1 이상의 안전한 정수여야 합니다.",
     "notice.rounding": "참고: 균형 센트 단위 배분으로 인해 동일한 참가자 간에 0.01의 차이가 발생할 수 있습니다.",
-    "notice.approximate_display": "근사 표시 전용 (정확한 송금 지침이 아니며 합계가 보존되지 않을 수 있습니다).",
+    "notice.approximate_display": "{unit} 단위로 반올림하여 합계가 달라질 수 있습니다.",
+    "button.copy_transfer": "복사",
+    "tooltip.copy_transfer": "{from} → {to} 송금액과 받는 계좌 복사",
+    "message.transfer_copied": "복사했습니다.",
+    "button.ladder": "다중 송금자 사다리타기",
+    "button.manual": "수동 선택으로 돌아가기",
+    "tooltip.ladder": "수동 선택 대신 최종 금액을 기준으로 여러 번 송금할 사람을 뽑습니다.",
+    "ladder.result": "여러 번 송금할 사람: {names}",
+    "ladder.fixed": "추첨할 필요가 없습니다. 여러 번 보낼 사람이 이미 정해져 있거나 모두 한 번 이하로 보냅니다.",
     "status.offline": "오프라인",
     "aria.row_name": "{row}번 행 이름",
     "aria.row_spent": "{row}번 행 지출",
@@ -551,7 +567,15 @@ const TRANSLATIONS = {
     "error.duplicate_name": "参加者名が重複しています: {name}",
     "error.repeat_not_safe_integer": "人数は正の安全な整数で入力してください。",
     "notice.rounding": "注意: 均衡セント単位の配分のため、同じ条件の参加者間で0.01の差が生じる場合があります。",
-    "notice.approximate_display": "概算表示専用（正確な送金指示ではなく、合計が一致しない場合があります）。",
+    "notice.approximate_display": "{unit}単位で四捨五入したため、合計が一致しない場合があります。",
+    "button.copy_transfer": "コピー",
+    "tooltip.copy_transfer": "{from} → {to} の正確な送金額と振込先をコピー",
+    "message.transfer_copied": "コピーしました。",
+    "button.ladder": "複数回送る人をあみだくじで選ぶ",
+    "button.manual": "手動選択に戻す",
+    "tooltip.ladder": "手動選択に代えて、最終金額を基に複数回送る人を選びます。",
+    "ladder.result": "複数回送る人: {names}",
+    "ladder.fixed": "抽選は不要です。複数回送る人が決まっているか、全員が1回以下で送れます。",
     "status.offline": "オフライン",
     "aria.row_name": "{row}行目の名前",
     "aria.row_spent": "{row}行目の支出",
@@ -738,7 +762,15 @@ const TRANSLATIONS = {
     "error.duplicate_name": "参与者姓名重复: {name}",
     "error.repeat_not_safe_integer": "重复人数必须为正安全整数。",
     "notice.rounding": "注意：由于采用均衡分（cent）分配方式，相同条件的参与者之间可能会有0.01的差异。",
-    "notice.approximate_display": "仅供近似展示（非精确转账指令，总额可能不守恒）。",
+    "notice.approximate_display": "按 {unit} 四舍五入，合计可能有差异。",
+    "button.copy_transfer": "复制",
+    "tooltip.copy_transfer": "复制 {from} → {to} 的准确金额和收款账户",
+    "message.transfer_copied": "已复制。",
+    "button.ladder": "抽签选出多次转账的人",
+    "button.manual": "恢复手动选择",
+    "tooltip.ladder": "按最终金额抽签，代替手动选择多次转账的人。",
+    "ladder.result": "多次转账的人：{names}",
+    "ladder.fixed": "无需抽签。多次转账的人已确定，或每人最多只需转一次。",
     "status.offline": "离线",
     "aria.row_name": "第 {row} 行姓名",
     "aria.row_spent": "第 {row} 行支出",
@@ -839,6 +871,7 @@ const NAME_MODE_OPTION_KEYS = {
 
 let currentLanguage = DEFAULT_LANGUAGE;
 let lastResultData = null;
+let ladderSeed = null;
 let draggedRow = null;
 let activeHandle = null;
 let pointerDragActive = false;
@@ -1522,6 +1555,10 @@ function cancelCalculation() {
   terminateActiveWorker();
   activeRequestId = ++requestSequence;
   hideResultAndError();
+  if (ladderSeed !== null) {
+    ladderSeed = null;
+    updateSplitLink();
+  }
   showError(t("message.cancelled"));
 }
 
@@ -1837,7 +1874,11 @@ function invalidatePendingState() {
 }
 
 function scheduleAutoCalculate(options = {}) {
-  const { immediate = false, updateLink = true } = options;
+  const { immediate = false, updateLink = true, keepLadder = false } = options;
+  if (updateLink && !keepLadder && ladderSeed !== null) {
+    ladderSeed = null;
+    updateSplitLink();
+  }
   if (autoCalculateTimer) {
     clearTimeout(autoCalculateTimer);
     autoCalculateTimer = null;
@@ -1876,12 +1917,14 @@ function shiftRoundingDigits(kind, delta) {
     updateSplitLink();
     renderResult(lastResultData);
   } else {
-    scheduleAutoCalculate({ immediate: true });
+    scheduleAutoCalculate({ immediate: true, keepLadder: true });
   }
 }
 
 async function calculate(options = {}) {
-  const { silentEmpty = false } = options;
+  const { silentEmpty = false, seed = ladderSeed } = options;
+  clearTimeout(autoCalculateTimer);
+  autoCalculateTimer = null;
 
   invalidatePendingState();
 
@@ -1923,6 +1966,10 @@ async function calculate(options = {}) {
     }
 
     if (event.data.result) {
+      if (seed !== null) {
+        ladderSeed = event.data.result.ladder?.winners ? seed : null;
+        updateSplitLink();
+      }
       lastUsedMultiplier = payload.multiplier;
       renderResult(event.data.result);
     }
@@ -1934,7 +1981,7 @@ async function calculate(options = {}) {
     showError(t("error.settlement_failed"));
   };
 
-  activeWorker.postMessage({ id: currentReqId, payload });
+  activeWorker.postMessage({ id: currentReqId, payload, ladderSeed: seed });
 }
 
 // ==========================================
@@ -1971,6 +2018,17 @@ function formatTransfer(transfer, digits, currency) {
   return transfer.from + " → " + transfer.to + ": " + amount + (digits < 0 ? " ~" : "") + account;
 }
 
+function transferClipboardText(transfer, currency) {
+  const digits = decimalToBigIntCents(transfer.amount) % 100n === 0n ? 0 : 2;
+  return [formatPlanAmount(transfer.amount, digits, currency), transfer.receiverAccount].filter(Boolean).join("\n");
+}
+
+function roundingMessage(digits, currency) {
+  if (digits >= 2) return "";
+  const unit = formatPlanAmount(formatRoundingUnit(digits), digits, currency).replace(/ ([원円元])$/u, "$1");
+  return t("notice.approximate_display", { unit });
+}
+
 // The solver orders transfers by sender, then receiver.
 function senderBranch(transfers, index) {
   const sender = transfers[index].from;
@@ -1986,6 +2044,10 @@ function renderPlanIntoElements(planData, digits, elements, currency = selectedC
   const { summaryEl, balancesEl, transfersEl } = elements;
   balancesEl.innerHTML = "";
   transfersEl.innerHTML = "";
+  if (elements.notice) {
+    elements.notice.textContent = planData.error ? "" : roundingMessage(digits, currency);
+    elements.notice.hidden = !elements.notice.textContent;
+  }
 
   if (planData.error) {
     const errMsg = planData.error.message || String(planData.error);
@@ -2012,6 +2074,14 @@ function renderPlanIntoElements(planData, digits, elements, currency = selectedC
     const branch = senderBranch(transfers, index);
     if (branch) li.dataset.senderBranch = branch;
     li.textContent = formatTransfer(transfer, digits, currency);
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "copy-transfer";
+    copy.dataset.html2canvasIgnore = "true";
+    copy.textContent = t("button.copy_transfer");
+    copy.ariaLabel = copy.title = t("tooltip.copy_transfer", transfer);
+    copy.onclick = () => copyText(transferClipboardText(transfer, currency), "message.transfer_copied");
+    li.appendChild(copy);
     transfersEl.appendChild(li);
   }
 
@@ -2034,10 +2104,7 @@ function renderResult(data) {
     roundingNoticeEl.classList.toggle("hidden", !hasRoundingNotice);
   }
 
-  const isApproximateView = beforeRoundingDigits !== 2 || afterRoundingDigits !== 2;
-  if (approximateNoticeEl) {
-    approximateNoticeEl.classList.toggle("hidden", !isApproximateView);
-  }
+  renderLadder(data.ladder);
 
   const hasOriginal = Boolean(data.original);
   if (hasOriginal) {
@@ -2045,12 +2112,14 @@ function renderResult(data) {
     if (dualResultPanel) dualResultPanel.classList.remove("hidden");
 
     renderPlanIntoElements(data.original, beforeRoundingDigits, {
+      notice: document.querySelector("#original-approximate"),
       summaryEl: originalSummaryEl,
       balancesEl: originalBalancesEl,
       transfersEl: originalTransfersEl,
     }, selectedCurrency(true));
 
     renderPlanIntoElements(data, afterRoundingDigits, {
+      notice: document.querySelector("#multiplied-approximate"),
       summaryEl: multipliedSummaryEl,
       balancesEl: multipliedBalancesEl,
       transfersEl: multipliedTransfersEl,
@@ -2060,11 +2129,66 @@ function renderResult(data) {
     if (singleResultPanel) singleResultPanel.classList.remove("hidden");
 
     renderPlanIntoElements(data, afterRoundingDigits, {
+      notice: approximateNoticeEl,
       summaryEl,
       balancesEl,
       transfersEl,
     });
   }
+}
+
+function renderLadder(ladder) {
+  document.querySelector("#ladder-panel").hidden = !ladder;
+  if (!ladder) return;
+  const chart = document.querySelector("#ladder-chart");
+  chart.replaceChildren();
+  const winners = new Set(ladder.winners);
+  document.querySelector("#ladder-manual").hidden = !winners.size;
+  document.querySelector("#ladder-status").textContent = winners.size
+    ? t("ladder.result", { names: [...winners].join(", ") }) : t("ladder.fixed");
+  if (!winners.size) return;
+
+  const lanes = [...ladder.top];
+  const board = document.createElement("div");
+  board.className = "ladder-board";
+  board.style.setProperty("--lanes", lanes.length);
+  const labels = document.createElement("div");
+  labels.className = "ladder-labels";
+  for (const name of lanes) {
+    const label = document.createElement("span");
+    label.textContent = name;
+    label.classList.toggle("drawn", winners.has(name));
+    labels.appendChild(label);
+  }
+  board.appendChild(labels);
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  const x = lane => 40 + 80 * lane;
+  const height = 24 + 14 * ladder.rungs.length;
+  svg.setAttribute("viewBox", [0, 0, 80 * lanes.length, height].join(" "));
+  function path(d, className) {
+    const element = document.createElementNS(ns, "path");
+    element.setAttribute("d", d);
+    element.setAttribute("class", className);
+    svg.appendChild(element);
+  }
+  const tracks = new Map(lanes.filter(n => winners.has(n)).map(name => [name, ""]));
+  for (const [i, name] of lanes.entries()) {
+    path("M" + x(i) + " 0V" + height, "rail");
+    if (tracks.has(name)) tracks.set(name, "M" + x(i) + " 0");
+  }
+  for (const [row, i] of ladder.rungs.entries()) {
+    const y = 18 + row * 14;
+    path("M" + x(i) + " " + y + "H" + x(i + 1), "rail");
+    for (const [from, to] of [[i, i + 1], [i + 1, i]]) {
+      const name = lanes[from];
+      if (tracks.has(name)) tracks.set(name, tracks.get(name) + "V" + y + "H" + x(to));
+    }
+    [lanes[i], lanes[i + 1]] = [lanes[i + 1], lanes[i]];
+  }
+  for (const track of tracks.values()) path(track + "V" + height, "drawn-path");
+  board.appendChild(svg);
+  chart.appendChild(board);
 }
 
 function appendPlanLines(lines, heading, planData, digits, currency = selectedCurrency()) {
@@ -2080,6 +2204,8 @@ function appendPlanLines(lines, heading, planData, digits, currency = selectedCu
   const transactions = planData.summary.transactions;
   const burdenPenalty = planData.summary.burden_penalty;
   lines.push(t("summary.template", { transactions, burdenPenalty }));
+  const notice = roundingMessage(digits, currency);
+  if (notice) lines.push(notice);
   lines.push("");
   lines.push(t("section.net_balances"));
   for (const item of planData.balances || []) {
@@ -2111,9 +2237,6 @@ function resultLines() {
     lines.push(t("notice.rounding"));
   }
 
-  if (beforeRoundingDigits !== 2 || afterRoundingDigits !== 2) {
-    lines.push(t("notice.approximate_display"));
-  }
   lines.push("");
 
   if (lastResultData.original) {
@@ -2150,18 +2273,21 @@ async function copyResults() {
     return;
   }
 
-  const text = lines.join("\n");
+  return copyText(lines.join("\n"), "message.copy_success");
+}
+
+async function copyText(text, successKey) {
   try {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
     } else {
       fallbackCopyText(text);
     }
-    showResultToolsFeedback("message.copy_success");
+    showResultToolsFeedback(successKey);
   } catch (error) {
     try {
       fallbackCopyText(text);
-      showResultToolsFeedback("message.copy_success");
+      showResultToolsFeedback(successKey);
     } catch (fallbackError) {
       showResultToolsFeedback("message.copy_error", { error: true });
     }
@@ -2257,6 +2383,13 @@ for (const input of [currencyUnitInput, originalCurrencyUnitInput]) {
 copyResultsButton.addEventListener("click", () => {
   void copyResults();
 });
+document.querySelector("#draw-ladder").addEventListener("click", () => {
+  const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+  void calculate({ seed });
+});
+document.querySelector("#ladder-manual").addEventListener("click", () => {
+  scheduleAutoCalculate({ immediate: true });
+});
 screenshotResultsButton.addEventListener("click", () => {
   void screenshotResults();
 });
@@ -2270,13 +2403,13 @@ multiplierInput.addEventListener("change", () => {
   refreshRoundingModeUI();
   scheduleAutoCalculate({ immediate: true });
 });
-tbody.addEventListener("input", () => {
+tbody.addEventListener("input", event => {
   markDirty();
-  scheduleAutoCalculate();
+  scheduleAutoCalculate({ keepLadder: event.target.matches(".account") });
 });
-tbody.addEventListener("change", () => {
+tbody.addEventListener("change", event => {
   markDirty();
-  scheduleAutoCalculate({ immediate: true });
+  scheduleAutoCalculate({ immediate: true, keepLadder: event.target.matches(".account") });
 });
 document.querySelector("#add-row").addEventListener("click", () => {
   const index = rowList().length;
@@ -2350,6 +2483,7 @@ const splitToggles = new Map([
 function updateSplitLink() {
   const params = new URLSearchParams({ split: "1", lang: currentLanguage });
   params.set("currency", selectedCurrency());
+  if (ladderSeed !== null) params.set("ladder", "1." + ladderSeed.toString(36));
   if (originalCurrencySelect.value !== "same") params.set("originalCurrency", selectedCurrency(true));
   for (const [key, toggle] of splitToggles) {
     if (toggle.checked) params.set(key, "1");
@@ -2414,6 +2548,9 @@ function loadSplitFromAddress() {
   const shared = fragment.get("split") === "1";
   const params = shared ? fragment : new URLSearchParams();
   const language = fragment.get("lang");
+  const token = params.get("ladder") || "";
+  const seed = /^1\.[0-9a-z]{1,7}$/.test(token) ? parseInt(token.slice(2), 36) : NaN;
+  ladderSeed = seed <= 0xffffffff ? seed : null;
   restoreCurrency(params.get("currency"), currencySelect, currencyUnitInput, "auto");
   restoreCurrency(params.get("originalCurrency"), originalCurrencySelect, originalCurrencyUnitInput, "same");
   updateCurrencyDisplay();
