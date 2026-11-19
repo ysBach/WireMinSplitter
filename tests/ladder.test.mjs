@@ -34,3 +34,29 @@ test("a shared draw selects real co-senders and keeps the minimum transfer count
   }
   assert.deepEqual([...teams].sort(), ["AB", "AC", "BC"]);
 });
+
+test("v2 keeps the table order and the bridges trace to the drawn counts", () => {
+  const rows = [
+    { name: "Z", spent: "69" }, { name: "A" }, { name: "R", spent: "112.32" },
+    { name: "C" }, { name: "B" }, { name: "D" },
+  ];
+  const orders = new Set();
+  for (let seed = 0; seed < 128; seed++) {
+    const result = solveSettlement({ rows }, seed, 2);
+    const { top, bottom, rungs, winners } = result.ladder;
+    assert.deepEqual(top, ["A", "C", "B", "D"]);
+    const lanes = [...top];
+    const bridges = Array(top.length - 1).fill(0);
+    for (const gap of rungs) {
+      assert.ok(Number.isInteger(gap) && gap >= 0 && gap < bridges.length);
+      bridges[gap]++;
+      [lanes[gap], lanes[gap + 1]] = [lanes[gap + 1], lanes[gap]];
+    }
+    assert.ok(bridges.every(count => count >= 2));
+    assert.deepEqual(lanes, bottom);
+    assert.deepEqual(winners, [lanes[0]]);
+    assert.deepEqual(lanes.map(name => result.transfers.filter(t => t.from === name).length), [2, 1, 1, 1]);
+    orders.add(bottom.join(""));
+  }
+  assert.equal(orders.size, 24);
+});

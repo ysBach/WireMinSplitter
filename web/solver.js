@@ -488,7 +488,7 @@ function toResult(people, multiplier, preferred, strict) {
 // Each multiplied view contains its plan or {error: {message, resource: false}}
 // when its strict plan is infeasible. Invalid inputs and resource failures throw
 // exceptions.
-export function solveSettlement(payload, ladderSeed = null) {
+export function solveSettlement(payload, ladderSeed = null, ladderVersion = 1) {
   if (payload === null || typeof payload !== "object") throw new SettlementError("Payload must be an object.");
   let rawPeople = payload.people;
   let preferred = payload.preferred_multi_payers || [];
@@ -515,7 +515,7 @@ export function solveSettlement(payload, ladderSeed = null) {
       get: parseDecimal(orDefault(item.extra_get, 0), "extra_get"),
     };
   });
-  const ladder = ladderSeed === null ? null : drawLadder(balancedNets(people, factor).balances, ladderSeed);
+  const ladder = ladderSeed === null ? null : drawLadder(balancedNets(people, factor).balances, ladderSeed, ladderVersion);
   if (ladder?.winners) preferred = ladder.winners;
   const single = cmpRat(factor, ONE) === 0;
   const result = single && !ladder ? toResult(people, ONE, preferred, strict) : solveView(people, factor, preferred, strict);
@@ -524,9 +524,7 @@ export function solveSettlement(payload, ladderSeed = null) {
   return result;
 }
 
-// Version 1 replay: shuffle the entrants, then add one bridge across each gap
-// in shuffled order. Following the bridges gives the priority order at the foot.
-function ladderLayout(names, seed) {
+function ladderLayout(names, seed, version) {
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw new SettlementError("Invalid ladder seed.");
   let state = seed;
   function shuffle(items) {
@@ -539,15 +537,37 @@ function ladderLayout(names, seed) {
     }
     return items;
   }
-  const top = shuffle([...names]);
-  const rungs = shuffle(Array.from({ length: names.length - 1 }, (_, i) => i));
-  const bottom = [...top];
-  for (const i of rungs) [bottom[i], bottom[i + 1]] = [bottom[i + 1], bottom[i]];
-  return { top, rungs, bottom };
+  const gaps = Array.from({ length: names.length - 1 }, (_, i) => i);
+  if (version === 1) {
+    // Saved v1 links shuffled alphabetically sorted names before drawing bridges.
+    const top = shuffle([...names].sort(compareCodePoints));
+    const rungs = shuffle(gaps);
+    const bottom = [...top];
+    for (const i of rungs) [bottom[i], bottom[i + 1]] = [bottom[i + 1], bottom[i]];
+    return { top, rungs, bottom };
+  }
+  if (version !== 2) throw new SettlementError("Unknown ladder version.");
+
+  const bottom = shuffle([...names]);
+  const lanes = [...names];
+  const rungs = [];
+  function cross(gap) {
+    rungs.push(gap);
+    [lanes[gap], lanes[gap + 1]] = [lanes[gap + 1], lanes[gap]];
+  }
+  // Cross every gap twice, then route each entrant to its drawn destination.
+  // These extra crossings change the paths without changing the draw.
+  for (const gap of shuffle([...gaps])) cross(gap);
+  for (const gap of shuffle([...gaps])) cross(gap);
+  for (const [end, name] of bottom.entries()) {
+    for (let i = lanes.indexOf(name, end); i > end; i--) cross(i - 1);
+  }
+  return { version, top: names, rungs, bottom };
 }
 
-export function drawLadder(balances, seed) {
-  const payers = balances.filter(b => b.cents < 0n).map(b => b.name).sort(compareCodePoints);
+export function drawLadder(balances, seed, version = 1) {
+  const tableOrder = balances.filter(b => b.cents < 0n).map(b => b.name);
+  const payers = [...tableOrder].sort(compareCodePoints);
   const first = optimizeTransfers(balances);
   const count = first.transfers.length;
   if (count === payers.length || payers.length < 2) return {};
@@ -597,8 +617,8 @@ export function drawLadder(balances, seed) {
   }
   if (teams.size < 2) return {};
   let options = [...teams.values()].map(team => new Set(team));
-  const entrants = payers.filter(name => options.some(team => team.has(name)) && options.some(team => !team.has(name)));
-  const layout = ladderLayout(entrants, seed);
+  const entrants = tableOrder.filter(name => options.some(team => team.has(name)) && options.some(team => !team.has(name)));
+  const layout = ladderLayout(entrants, seed, version);
   for (const name of layout.bottom) {
     const withName = options.filter(team => team.has(name));
     if (withName.length) options = withName;

@@ -561,6 +561,7 @@ li[data-sender-branch="╰"]::before {
   overflow-wrap: anywhere;
 }
 .ladder-labels .drawn { color: #0f766e; font-weight: bold; }
+.ladder-counts { margin-top: 0.2rem; font-variant-numeric: tabular-nums; }
 .ladder-board svg { display: block; width: 100%; fill: none; }
 .ladder-board .rail { stroke: var(--line); stroke-width: 2; }
 .ladder-board .drawn-path { stroke: #0f766e; stroke-width: 3; }

@@ -186,6 +186,8 @@ const TRANSLATIONS = {
     "button.manual": "Use manual preferences",
     "tooltip.ladder": "Use the draw instead of manual preferences for the final amounts.",
     "ladder.result": "Multi-payers: {names}",
+    "ladder.one_transfer": "1 transfer",
+    "ladder.transfers": "{count} transfers",
     "ladder.fixed": "The same people must make the extra transfers, or none are needed.",
     "status.offline": "Offline",
     "aria.row_name": "Row {row} Name",
@@ -382,6 +384,8 @@ const TRANSLATIONS = {
     "button.manual": "수동 선택으로 돌아가기",
     "tooltip.ladder": "수동 선택 대신 최종 금액을 기준으로 여러 번 송금할 사람을 뽑습니다.",
     "ladder.result": "여러 번 송금할 사람: {names}",
+    "ladder.one_transfer": "1회",
+    "ladder.transfers": "{count}회",
     "ladder.fixed": "추첨할 필요가 없습니다. 여러 번 보낼 사람이 이미 정해져 있거나 모두 한 번 이하로 보냅니다.",
     "status.offline": "오프라인",
     "aria.row_name": "{row}번 행 이름",
@@ -578,6 +582,8 @@ const TRANSLATIONS = {
     "button.manual": "手動選択に戻す",
     "tooltip.ladder": "手動選択に代えて、最終金額を基に複数回送る人を選びます。",
     "ladder.result": "複数回送る人: {names}",
+    "ladder.one_transfer": "1回",
+    "ladder.transfers": "{count}回",
     "ladder.fixed": "抽選は不要です。複数回送る人が決まっているか、全員が1回以下で送れます。",
     "status.offline": "オフライン",
     "aria.row_name": "{row}行目の名前",
@@ -774,6 +780,8 @@ const TRANSLATIONS = {
     "button.manual": "恢复手动选择",
     "tooltip.ladder": "按最终金额抽签，代替手动选择多次转账的人。",
     "ladder.result": "多次转账的人：{names}",
+    "ladder.one_transfer": "1次",
+    "ladder.transfers": "{count}次",
     "ladder.fixed": "无需抽签。多次转账的人已确定，或每人最多只需转一次。",
     "status.offline": "离线",
     "aria.row_name": "第 {row} 行姓名",
@@ -876,7 +884,7 @@ const NAME_MODE_OPTION_KEYS = {
 let currentLanguage = DEFAULT_LANGUAGE;
 let lastResultData = null;
 let accountFieldSequence = 0;
-let ladderSeed = null;
+let ladderDraw = null;
 let draggedRow = null;
 let activeHandle = null;
 let pointerDragActive = false;
@@ -1564,8 +1572,8 @@ function cancelCalculation() {
   terminateActiveWorker();
   activeRequestId = ++requestSequence;
   hideResultAndError();
-  if (ladderSeed !== null) {
-    ladderSeed = null;
+  if (ladderDraw !== null) {
+    ladderDraw = null;
     updateSplitLink();
   }
   showError(t("message.cancelled"));
@@ -1895,8 +1903,8 @@ function invalidatePendingState() {
 
 function scheduleAutoCalculate(options = {}) {
   const { immediate = false, updateLink = true, keepLadder = false } = options;
-  if (updateLink && !keepLadder && ladderSeed !== null) {
-    ladderSeed = null;
+  if (updateLink && !keepLadder && ladderDraw !== null) {
+    ladderDraw = null;
     updateSplitLink();
   }
   if (autoCalculateTimer) {
@@ -1942,7 +1950,7 @@ function shiftRoundingDigits(kind, delta) {
 }
 
 async function calculate(options = {}) {
-  const { silentEmpty = false, seed = ladderSeed } = options;
+  const { silentEmpty = false, draw = ladderDraw } = options;
   clearTimeout(autoCalculateTimer);
   autoCalculateTimer = null;
 
@@ -1986,8 +1994,8 @@ async function calculate(options = {}) {
     }
 
     if (event.data.result) {
-      if (seed !== null) {
-        ladderSeed = event.data.result.ladder?.winners ? seed : null;
+      if (draw !== null) {
+        ladderDraw = event.data.result.ladder?.winners ? draw : null;
         updateSplitLink();
       }
       lastUsedMultiplier = payload.multiplier;
@@ -2001,7 +2009,7 @@ async function calculate(options = {}) {
     showError(t("error.settlement_failed"));
   };
 
-  activeWorker.postMessage({ id: currentReqId, payload, ladderSeed: seed });
+  activeWorker.postMessage({ id: currentReqId, payload, ladderSeed: draw?.seed, ladderVersion: draw?.version });
 }
 
 // ==========================================
@@ -2124,7 +2132,7 @@ function renderResult(data) {
     roundingNoticeEl.classList.toggle("hidden", !hasRoundingNotice);
   }
 
-  renderLadder(data.ladder);
+  renderLadder(data.ladder, data.transfers);
 
   const hasOriginal = Boolean(data.original);
   if (hasOriginal) {
@@ -2157,7 +2165,7 @@ function renderResult(data) {
   }
 }
 
-function renderLadder(ladder) {
+function renderLadder(ladder, transfers) {
   document.querySelector("#ladder-panel").hidden = !ladder;
   if (!ladder) return;
   const chart = document.querySelector("#ladder-chart");
@@ -2184,7 +2192,17 @@ function renderLadder(ladder) {
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   const x = lane => 40 + 80 * lane;
-  const height = 24 + 14 * ladder.rungs.length;
+  // Independent crossings can share a level. A lane's crossings must stay
+  // in order so that the drawn paths agree with the settlement.
+  const laneLevels = lanes.map(() => 0);
+  let depth = 0;
+  const levels = ladder.rungs.map((gap, index) => {
+    const level = ladder.version === 2 ? Math.max(laneLevels[gap], laneLevels[gap + 1]) + 1 : index + 1;
+    laneLevels[gap] = laneLevels[gap + 1] = level;
+    depth = Math.max(depth, level);
+    return level;
+  });
+  const height = 24 + 14 * depth;
   svg.setAttribute("viewBox", [0, 0, 80 * lanes.length, height].join(" "));
   function path(d, className) {
     const element = document.createElementNS(ns, "path");
@@ -2198,7 +2216,7 @@ function renderLadder(ladder) {
     if (tracks.has(name)) tracks.set(name, "M" + x(i) + " 0");
   }
   for (const [row, i] of ladder.rungs.entries()) {
-    const y = 18 + row * 14;
+    const y = 4 + levels[row] * 14;
     path("M" + x(i) + " " + y + "H" + x(i + 1), "rail");
     for (const [from, to] of [[i, i + 1], [i + 1, i]]) {
       const name = lanes[from];
@@ -2208,6 +2226,23 @@ function renderLadder(ladder) {
   }
   for (const track of tracks.values()) path(track + "V" + height, "drawn-path");
   board.appendChild(svg);
+  const counts = new Map();
+  for (const { from } of transfers) counts.set(from, (counts.get(from) || 0) + 1);
+  const endpoints = document.createElement("div");
+  endpoints.className = "ladder-labels ladder-counts";
+  const descriptions = [];
+  for (const name of lanes) {
+    const count = counts.get(name);
+    const endpoint = document.createElement("span");
+    endpoint.textContent = count === 1 ? t("ladder.one_transfer") : t("ladder.transfers", { count });
+    endpoint.title = name + " · " + endpoint.textContent;
+    endpoint.classList.toggle("drawn", count > 1);
+    descriptions.push(endpoint.title);
+    endpoints.appendChild(endpoint);
+  }
+  board.appendChild(endpoints);
+  board.setAttribute("role", "img");
+  board.setAttribute("aria-label", descriptions.join(", "));
   chart.appendChild(board);
 }
 
@@ -2405,7 +2440,7 @@ copyResultsButton.addEventListener("click", () => {
 });
 document.querySelector("#draw-ladder").addEventListener("click", () => {
   const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-  void calculate({ seed });
+  void calculate({ draw: { seed, version: 2 } });
 });
 document.querySelector("#ladder-manual").addEventListener("click", () => {
   scheduleAutoCalculate({ immediate: true });
@@ -2503,7 +2538,7 @@ const splitToggles = new Map([
 function updateSplitLink() {
   const params = new URLSearchParams({ split: "1", lang: currentLanguage });
   params.set("currency", selectedCurrency());
-  if (ladderSeed !== null) params.set("ladder", "1." + ladderSeed.toString(36));
+  if (ladderDraw) params.set("ladder", ladderDraw.version + "." + ladderDraw.seed.toString(36));
   if (originalCurrencySelect.value !== "same") params.set("originalCurrency", selectedCurrency(true));
   for (const [key, toggle] of splitToggles) {
     if (toggle.checked) params.set(key, "1");
@@ -2569,8 +2604,8 @@ function loadSplitFromAddress() {
   const params = shared ? fragment : new URLSearchParams();
   const language = fragment.get("lang");
   const token = params.get("ladder") || "";
-  const seed = /^1\.[0-9a-z]{1,7}$/.test(token) ? parseInt(token.slice(2), 36) : NaN;
-  ladderSeed = seed <= 0xffffffff ? seed : null;
+  const seed = /^[12]\.[0-9a-z]{1,7}$/.test(token) ? parseInt(token.slice(2), 36) : NaN;
+  ladderDraw = seed <= 0xffffffff ? { seed, version: Number(token[0]) } : null;
   restoreCurrency(params.get("currency"), currencySelect, currencyUnitInput, "auto");
   restoreCurrency(params.get("originalCurrency"), originalCurrencySelect, originalCurrencyUnitInput, "same");
   updateCurrencyDisplay();
