@@ -8,7 +8,11 @@ if (
   "serviceWorker" in navigator
 ) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
+      .then(registration => {
+        if (registration.active && !registration.installing) return registration.update();
+      })
+      .catch(() => {});
   });
 }
 
@@ -59,6 +63,7 @@ const multipliedSummaryEl = document.querySelector("#multiplied-summary");
 const multipliedBalancesEl = document.querySelector("#multiplied-balances");
 const multipliedTransfersEl = document.querySelector("#multiplied-transfers");
 const copyResultsButton = document.querySelector("#copy-results");
+const ladderSeedInput = document.querySelector("#ladder-seed");
 const screenshotResultsButton = document.querySelector("#screenshot-results");
 const resultToolsFeedbackEl = document.querySelector("#result-tools-feedback");
 const calculatingIndicatorEl = document.querySelector("#calculating-indicator");
@@ -183,6 +188,7 @@ const TRANSLATIONS = {
     "tooltip.copy_transfer": "Copy exact amount and receiving account for {from} → {to}",
     "message.transfer_copied": "Copied.",
     "button.ladder": "Draw multi-payers",
+    "label.ladder_seed": "Seed (optional)",
     "button.manual": "Use manual preferences",
     "tooltip.ladder": "Use the draw instead of manual preferences for the final amounts.",
     "ladder.result": "Multi-payers: {names}",
@@ -381,6 +387,7 @@ const TRANSLATIONS = {
     "tooltip.copy_transfer": "{from} → {to} 송금액과 받는 계좌 복사",
     "message.transfer_copied": "복사했습니다.",
     "button.ladder": "다중 송금자 사다리타기",
+    "label.ladder_seed": "시드 (선택)",
     "button.manual": "수동 선택으로 돌아가기",
     "tooltip.ladder": "수동 선택 대신 최종 금액을 기준으로 여러 번 송금할 사람을 뽑습니다.",
     "ladder.result": "여러 번 송금할 사람: {names}",
@@ -579,6 +586,7 @@ const TRANSLATIONS = {
     "tooltip.copy_transfer": "{from} → {to} の正確な送金額と振込先をコピー",
     "message.transfer_copied": "コピーしました。",
     "button.ladder": "複数回送る人をあみだくじで選ぶ",
+    "label.ladder_seed": "シード（任意）",
     "button.manual": "手動選択に戻す",
     "tooltip.ladder": "手動選択に代えて、最終金額を基に複数回送る人を選びます。",
     "ladder.result": "複数回送る人: {names}",
@@ -777,6 +785,7 @@ const TRANSLATIONS = {
     "tooltip.copy_transfer": "复制 {from} → {to} 的准确金额和收款账户",
     "message.transfer_copied": "已复制。",
     "button.ladder": "抽签选出多次转账的人",
+    "label.ladder_seed": "种子（可选）",
     "button.manual": "恢复手动选择",
     "tooltip.ladder": "按最终金额抽签，代替手动选择多次转账的人。",
     "ladder.result": "多次转账的人：{names}",
@@ -2438,9 +2447,11 @@ for (const input of [currencyUnitInput, originalCurrencyUnitInput]) {
 copyResultsButton.addEventListener("click", () => {
   void copyResults();
 });
-document.querySelector("#draw-ladder").addEventListener("click", () => {
-  const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-  void calculate({ draw: { seed, version: 2 } });
+document.querySelector("#ladder-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const text = ladderSeedInput.value.trim().normalize("NFC");
+  const draw = text ? drawFromText(text) : { seed: crypto.getRandomValues(new Uint32Array(1))[0], version: 2 };
+  void calculate({ draw });
 });
 document.querySelector("#ladder-manual").addEventListener("click", () => {
   scheduleAutoCalculate({ immediate: true });
@@ -2538,7 +2549,10 @@ const splitToggles = new Map([
 function updateSplitLink() {
   const params = new URLSearchParams({ split: "1", lang: currentLanguage });
   params.set("currency", selectedCurrency());
-  if (ladderDraw) params.set("ladder", ladderDraw.version + "." + ladderDraw.seed.toString(36));
+  if (ladderDraw) {
+    const seed = ladderDraw.text ? "~" + ladderDraw.text : ladderDraw.seed.toString(36);
+    params.set("ladder", ladderDraw.version + "." + seed);
+  }
   if (originalCurrencySelect.value !== "same") params.set("originalCurrency", selectedCurrency(true));
   for (const [key, toggle] of splitToggles) {
     if (toggle.checked) params.set(key, "1");
@@ -2598,14 +2612,29 @@ function restoreCurrency(value, select, input, fallback) {
   }
 }
 
+function drawFromText(text) {
+  // The v2 text link uses FNV-1a over NFC UTF-8 to reproduce a 32-bit draw.
+  let seed = 0x811c9dc5;
+  for (const byte of new TextEncoder().encode(text)) seed = Math.imul(seed ^ byte, 0x01000193);
+  return { seed: seed >>> 0, version: 2, text };
+}
+
+function readLadderDraw(token) {
+  if (token.startsWith("2.~")) {
+    const text = token.slice(3).trim().normalize("NFC");
+    return text ? drawFromText(text) : null;
+  }
+  const seed = /^[12]\.[0-9a-z]{1,7}$/.test(token) ? parseInt(token.slice(2), 36) : NaN;
+  return seed <= 0xffffffff ? { seed, version: Number(token[0]) } : null;
+}
+
 function loadSplitFromAddress() {
   const fragment = new URLSearchParams(location.hash.slice(1));
   const shared = fragment.get("split") === "1";
   const params = shared ? fragment : new URLSearchParams();
   const language = fragment.get("lang");
-  const token = params.get("ladder") || "";
-  const seed = /^[12]\.[0-9a-z]{1,7}$/.test(token) ? parseInt(token.slice(2), 36) : NaN;
-  ladderDraw = seed <= 0xffffffff ? { seed, version: Number(token[0]) } : null;
+  ladderDraw = readLadderDraw(params.get("ladder") || "");
+  ladderSeedInput.value = ladderDraw?.text ?? "";
   restoreCurrency(params.get("currency"), currencySelect, currencyUnitInput, "auto");
   restoreCurrency(params.get("originalCurrency"), originalCurrencySelect, originalCurrencyUnitInput, "same");
   updateCurrencyDisplay();

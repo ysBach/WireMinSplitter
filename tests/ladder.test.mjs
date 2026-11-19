@@ -1,8 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { drawLadder, solveSettlement } from "../web/solver.js";
 
 const balances = values => values.map((v, i) => ({ name: String.fromCharCode(65 + i), cents: BigInt(v) }));
+
+test("text seed links replay Unicode and preserve numeric seed links", () => {
+  const app = readFileSync(new URL("../web/app.js", import.meta.url), "utf8");
+  const readDraw = new Function(app.slice(app.indexOf("function drawFromText"), app.indexOf("function loadSplitFromAddress")) + ";return readLadderDraw;")();
+  assert.deepEqual(readDraw("2.~kasi"), { version: 2, seed: 0x2e8bedbd, text: "kasi" });
+  assert.deepEqual(readDraw("2.~  한글&+~ ".normalize("NFD")), readDraw("2.~한글&+~"));
+  assert.deepEqual(readDraw("1.0"), { version: 1, seed: 0 });
+  assert.deepEqual(readDraw("2.z"), { version: 2, seed: 35 });
+  assert.equal(readDraw("2.~ "), null);
+});
 
 test("the ladder excludes fixed senders, receivers and settled participants", () => {
   const entries = balances([-6, -4, -4, 3, 3, 3, 5, 0]);

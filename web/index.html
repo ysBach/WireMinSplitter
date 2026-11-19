@@ -347,8 +347,12 @@
         <div class="result-head">
           <h2 data-i18n="section.result">Result</h2>
           <div class="result-tools">
-            <button id="draw-ladder" type="button" class="secondary compact"
-              data-i18n="button.ladder" data-i18n-title="tooltip.ladder">Draw multi-payers</button>
+            <form id="ladder-form">
+              <label for="ladder-seed" data-i18n="label.ladder_seed">Seed (optional)</label>
+              <input id="ladder-seed" type="text" autocomplete="off" spellcheck="false" placeholder="kasi" />
+              <button id="draw-ladder" type="submit" class="secondary compact"
+                data-i18n="button.ladder" data-i18n-title="tooltip.ladder">Draw multi-payers</button>
+            </form>
             <button
               id="copy-results"
               type="button"

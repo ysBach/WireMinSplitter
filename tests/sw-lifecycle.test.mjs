@@ -30,6 +30,7 @@ function serviceWorker(version, stores = new Map(), unavailable = new Set(), clo
       const entries = stores.get(name);
       return {
         async addAll(assets) {
+          assert.ok(assets.every(asset => asset.cache === "reload"));
           // Cache.addAll must not accept a partial shell when any resource fails.
           const responses = await Promise.all(assets.map(fetchAsset));
           if (responses.some((response) => !response.ok)) throw new Error("Precache failed");
@@ -57,11 +58,12 @@ function serviceWorker(version, stores = new Map(), unavailable = new Set(), clo
   };
   const self = {
     location: { origin },
+    registration: { scope: origin + "/" },
     addEventListener(name, handler) { handlers.set(name, handler); },
     skipWaiting() { calls.skipWaiting += 1; },
     clients: { claim() { calls.claim += 1; } },
   };
-  vm.runInNewContext(source.replaceAll("__CACHE_VERSION__", version), { self, caches, fetch: fetchAsset, URL, Response });
+  vm.runInNewContext(source.replaceAll("__CACHE_VERSION__", version), { self, caches, fetch: fetchAsset, URL, Request, Response });
   return {
     stores,
     calls,
@@ -86,33 +88,48 @@ test("offline installation fails rather than accepting a shell without its solve
 });
 
 test("offline navigation to the app or a cached file shows that installed file", async () => {
-  const worker = serviceWorker("installed");
+  const unavailable = new Set();
+  const worker = serviceWorker("installed", new Map(), unavailable);
   await worker.dispatch("install");
   await worker.dispatch("activate");
-  const networkAfterInstall = worker.calls.network;
   for (const filename of ["/", "/app.js", "/solver-worker.js", "/solver.js", "/vendor/html2canvas.min.js"]) {
+    unavailable.add(filename);
     const response = await worker.dispatch("fetch", { url: origin + filename, method: "GET", mode: "navigate" });
     assert.equal(response?.status, 200, filename);
     const expected = await readFile(resolve("web", "." + (filename === "/" ? "/index.html" : filename)), "utf8");
     assert.ok((await response.text()) === expected, filename + " must show its own content");
   }
-  assert.equal(worker.calls.network, networkAfterInstall);
 });
 
-test("a waiting update keeps the old shell usable until activation, then removes its cache", async () => {
+test("a complete update activates with existing tabs open and removes its predecessor", async () => {
   const old = serviceWorker("old");
   await old.dispatch("install");
   await old.dispatch("activate");
   const next = serviceWorker("next", old.stores);
   await next.dispatch("install");
-  assert.equal(next.calls.skipWaiting, 0);
+  assert.equal(next.calls.skipWaiting, 1);
   assert.equal(next.calls.claim, 0);
   assert.equal(old.stores.size, 2);
   const oldReply = await old.dispatch("fetch", { url: origin + "/solver.js", method: "GET", mode: "cors" });
   assert.equal(oldReply.status, 200);
   await next.dispatch("activate");
+  assert.equal(next.calls.claim, 1);
   assert.equal(next.stores.size, 1);
   assert.match([...next.stores.keys()][0], /next$/);
+});
+
+test("an online reload reads the server while an outage uses the installed bundle", async () => {
+  const unavailable = new Set();
+  const worker = serviceWorker("installed", new Map(), unavailable);
+  await worker.dispatch("install");
+  const files = [...worker.stores.values()][0];
+  for (const [file, mode] of [["/", "navigate"], ["/app.js", "cors"], ["/solver.js", "cors"]]) {
+    const request = { url: origin + file, method: "GET", mode };
+    files.set(request.url, new Response("older offline copy"));
+    assert.notEqual(await (await worker.dispatch("fetch", request)).text(), "older offline copy");
+    unavailable.add(file);
+    assert.equal(await (await worker.dispatch("fetch", request)).text(), "older offline copy");
+  }
 });
 
 test("Pages redirects never supply the offline navigation fallback, including query URLs", async () => {

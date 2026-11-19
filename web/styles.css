@@ -399,6 +399,16 @@ tr.drop-after td {
   flex-wrap: wrap;
 }
 
+#ladder-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+
+#ladder-seed { width: 7rem; }
+
 .result-feedback {
   margin: 0.4rem 0 0.15rem;
   color: var(--muted);
