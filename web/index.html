@@ -226,23 +226,35 @@
             <label class="field-inline">
               <span data-i18n="label.currency">Currency</span>
               <select id="currency">
-                <option value="auto" data-i18n="option.currency_default">Default (USD)</option>
-                <option value="USD">USD</option>
+                <option value="auto" data-i18n="option.currency_default">Default ($)</option>
+                <option value="USD">$ (USD)</option>
+                <option value="EUR">€ (EUR)</option>
                 <option value="KRW">원 (KRW)</option>
                 <option value="CNY">元 (CNY)</option>
                 <option value="JPY">円 (JPY)</option>
+                <option value="custom" data-i18n="option.custom_currency">Custom</option>
               </select>
             </label>
-            <label id="original-currency-group" class="field-inline hidden">
-              <span data-i18n="label.original_currency">Currency before multiplier</span>
+            <label class="field-inline" hidden>
+              <span data-i18n="label.currency_unit">Currency label</span>
+              <input id="currency-unit" type="text" dir="auto" />
+            </label>
+            <div id="original-currency-group" class="field-inline hidden">
+              <label for="original-currency" data-i18n="label.original_currency">Currency before multiplier</label>
               <select id="original-currency">
                 <option value="same" data-i18n="option.same_currency">Same currency</option>
-                <option value="USD">USD</option>
+                <option value="USD">$ (USD)</option>
+                <option value="EUR">€ (EUR)</option>
                 <option value="KRW">원 (KRW)</option>
                 <option value="CNY">元 (CNY)</option>
                 <option value="JPY">円 (JPY)</option>
+                <option value="custom" data-i18n="option.custom_currency">Custom</option>
               </select>
-            </label>
+              <label class="field-inline" hidden>
+                <span data-i18n="label.original_currency_unit">Original currency label</span>
+                <input id="original-currency-unit" type="text" dir="auto" />
+              </label>
+            </div>
             <label
               class="field-inline"
               for="number-style"

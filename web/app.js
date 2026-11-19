@@ -32,10 +32,13 @@ const beforeRoundingLabel = document.querySelector("#rounding-before-label");
 const afterRoundingLabel = document.querySelector("#rounding-after-label");
 const multiplierInput = document.querySelector("#multiplier");
 const currencySelect = document.querySelector("#currency");
+const currencyUnitInput = document.querySelector("#currency-unit");
 const originalCurrencySelect = document.querySelector("#original-currency");
+const originalCurrencyUnitInput = document.querySelector("#original-currency-unit");
 const originalCurrencyGroup = document.querySelector("#original-currency-group");
 const DEFAULT_CURRENCIES = { en: "USD", ko: "KRW", zh: "CNY", ja: "JPY" };
-const CURRENCY_UNITS = { USD: "USD", KRW: "원", CNY: "元", JPY: "円" };
+const CURRENCY_UNITS = { USD: "$", EUR: "€", KRW: "원", CNY: "元", JPY: "円" };
+const CUSTOM_CURRENCY_PREFIX = "custom:";
 const numberStyleSelect = document.querySelector("#number-style");
 const peopleCountInput = document.querySelector("#people-count");
 const applyCountButton = document.querySelector("#apply-count");
@@ -86,7 +89,10 @@ const TRANSLATIONS = {
     "label.currency": "Currency",
     "label.original_currency": "Currency before multiplier",
     "option.same_currency": "Same currency",
-    "option.currency_default": "Default (USD)",
+    "option.currency_default": "Default ($)",
+    "option.custom_currency": "Custom",
+    "label.currency_unit": "Currency label",
+    "label.original_currency_unit": "Original currency label",
     "title.document": "Wire-Min-Splitter",
     "app.title": "Wire-Min-Splitter",
     "app.subtitle": "Enter party spending and optional fairness adjustments, then generate minimal transfer instructions.",
@@ -271,6 +277,9 @@ const TRANSLATIONS = {
     "label.original_currency": "배수 적용 전 통화",
     "option.same_currency": "같은 통화",
     "option.currency_default": "기본값 (원)",
+    "option.custom_currency": "직접 입력",
+    "label.currency_unit": "통화 단위",
+    "label.original_currency_unit": "배수 적용 전 통화 단위",
     "title.document": "Wire-Min-Splitter (최소송금 N빵 계산기)",
     "app.title": "Wire-Min-Splitter (최소송금 N빵 계산기)",
     "app.subtitle": "파티 지출과 보정값을 입력하면 최소 송금 횟수 정산안을 계산합니다.",
@@ -455,6 +464,9 @@ const TRANSLATIONS = {
     "label.original_currency": "倍率適用前の通貨",
     "option.same_currency": "同じ通貨",
     "option.currency_default": "既定 (円)",
+    "option.custom_currency": "自由入力",
+    "label.currency_unit": "通貨単位",
+    "label.original_currency_unit": "倍率適用前の通貨単位",
     "title.document": "Wire-Min-Splitter (最小送金バラバラ割り勘)",
     "app.title": "Wire-Min-Splitter (最小送金バラバラ割り勘)",
     "app.subtitle": "パーティーの支出と補正値を入力すると、送金回数が最小の精算案を計算します。",
@@ -639,6 +651,9 @@ const TRANSLATIONS = {
     "label.original_currency": "乘以倍率前的币种",
     "option.same_currency": "相同币种",
     "option.currency_default": "默认 (元)",
+    "option.custom_currency": "自定义",
+    "label.currency_unit": "货币单位",
+    "label.original_currency_unit": "乘以倍率前的货币单位",
     "title.document": "Wire-Min-Splitter (最少转账AA计算器)",
     "app.title": "Wire-Min-Splitter (最少转账AA计算器)",
     "app.subtitle": "输入聚会支出和调整项，生成转账次数最少的结算方案。",
@@ -865,7 +880,7 @@ function t(key, variables = {}) {
 function detectInitialLanguage() {
   try {
     const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (stored && TRANSLATIONS[stored]) {
+    if (Object.hasOwn(TRANSLATIONS, stored)) {
       return stored;
     }
   } catch (error) {
@@ -1342,7 +1357,7 @@ function setNumberStyle(style, options = {}) {
 
 function setLanguage(language, options = {}) {
   const { persist = true } = options;
-  if (!TRANSLATIONS[language]) {
+  if (!Object.hasOwn(TRANSLATIONS, language)) {
     return;
   }
 
@@ -1927,13 +1942,27 @@ async function calculate(options = {}) {
 // ==========================================
 
 function selectedCurrency(original = false) {
-  if (original && originalCurrencySelect.value !== "same") return originalCurrencySelect.value;
-  return currencySelect.value === "auto" ? DEFAULT_CURRENCIES[currentLanguage] : currencySelect.value;
+  const useOriginal = original && originalCurrencySelect.value !== "same";
+  const code = useOriginal ? originalCurrencySelect.value : currencySelect.value;
+  if (code === "auto") return DEFAULT_CURRENCIES[currentLanguage];
+  if (code === "custom") {
+    const input = useOriginal ? originalCurrencyUnitInput : currencyUnitInput;
+    return CUSTOM_CURRENCY_PREFIX + input.value;
+  }
+  return code;
 }
 
 function formatPlanAmount(amount, digits, currency) {
   const rounded = roundBigIntCents(decimalToBigIntCents(amount), digits);
-  return formatRoundedAmountBigInt(rounded, digits) + " " + CURRENCY_UNITS[currency];
+  const unit = currency.startsWith(CUSTOM_CURRENCY_PREFIX)
+    ? currency.slice(CUSTOM_CURRENCY_PREFIX.length).trim()
+    : CURRENCY_UNITS[currency];
+  if (unit === "$" || unit === "€") {
+    const magnitude = rounded < 0n ? -rounded : rounded;
+    return (rounded < 0n ? "-" : "") + unit + formatRoundedAmountBigInt(magnitude, digits);
+  }
+  const value = formatRoundedAmountBigInt(rounded, digits);
+  return unit ? value + " " + unit : value;
 }
 
 function formatTransfer(transfer, digits, currency) {
@@ -2192,11 +2221,22 @@ numberStyleSelect.addEventListener("change", () => {
   setNumberStyle(numberStyleSelect.value);
   updateSplitLink();
 });
+function updateCurrencyDisplay() {
+  currencyUnitInput.closest("label").hidden = currencySelect.value !== "custom";
+  originalCurrencyUnitInput.closest("label").hidden = originalCurrencySelect.value !== "custom";
+}
+
+function onCurrencyEdit() {
+  updateCurrencyDisplay();
+  updateSplitLink();
+  if (lastResultData) renderResult(lastResultData);
+}
+
 for (const select of [currencySelect, originalCurrencySelect]) {
-  select.addEventListener("change", () => {
-    updateSplitLink();
-    if (lastResultData) renderResult(lastResultData);
-  });
+  select.addEventListener("change", onCurrencyEdit);
+}
+for (const input of [currencyUnitInput, originalCurrencyUnitInput]) {
+  input.addEventListener("input", onCurrencyEdit);
 }
 copyResultsButton.addEventListener("click", () => {
   void copyResults();
@@ -2292,9 +2332,9 @@ const splitToggles = new Map([
 ]);
 
 function updateSplitLink() {
-  const params = new URLSearchParams({ split: "1" });
+  const params = new URLSearchParams({ split: "1", lang: currentLanguage });
   params.set("currency", selectedCurrency());
-  if (originalCurrencySelect.value !== "same") params.set("originalCurrency", originalCurrencySelect.value);
+  if (originalCurrencySelect.value !== "same") params.set("originalCurrency", selectedCurrency(true));
   for (const [key, toggle] of splitToggles) {
     if (toggle.checked) params.set(key, "1");
   }
@@ -2343,14 +2383,24 @@ function readLinkRounding(value) {
     ? digits : DEFAULT_ROUNDING_DIGITS;
 }
 
+function restoreCurrency(value, select, input, fallback) {
+  if (value?.startsWith(CUSTOM_CURRENCY_PREFIX)) {
+    input.value = value.slice(CUSTOM_CURRENCY_PREFIX.length);
+    select.value = "custom";
+  } else {
+    input.value = "";
+    select.value = Object.hasOwn(CURRENCY_UNITS, value) ? value : fallback;
+  }
+}
+
 function loadSplitFromAddress() {
   const fragment = new URLSearchParams(location.hash.slice(1));
   const shared = fragment.get("split") === "1";
   const params = shared ? fragment : new URLSearchParams();
-  const currency = params.get("currency");
-  const originalCurrency = params.get("originalCurrency");
-  currencySelect.value = Object.hasOwn(CURRENCY_UNITS, currency) ? currency : "auto";
-  originalCurrencySelect.value = Object.hasOwn(CURRENCY_UNITS, originalCurrency) ? originalCurrency : "same";
+  const language = fragment.get("lang");
+  restoreCurrency(params.get("currency"), currencySelect, currencyUnitInput, "auto");
+  restoreCurrency(params.get("originalCurrency"), originalCurrencySelect, originalCurrencyUnitInput, "same");
+  updateCurrencyDisplay();
   for (const [key, toggle] of splitToggles) {
     toggle.checked = params.get(key) === "1";
   }
@@ -2366,18 +2416,16 @@ function loadSplitFromAddress() {
   tbody.replaceChildren(body);
   hasUserEditedInputs = shared;
   syncPeopleCountInput();
-  updateAllRowAriaLabels();
-  refreshRoundingControls();
-  refreshRoundingModeUI();
+  setLanguage(Object.hasOwn(TRANSLATIONS, language) ? language : detectInitialLanguage(), { persist: false });
   refreshRepeatState();
   refreshAdjustmentsState();
   scheduleAutoCalculate({ immediate: true, updateLink: false });
 }
 
-setLanguage(detectInitialLanguage(), { persist: false });
 loadSplitFromAddress();
 window.addEventListener("hashchange", () => {
-  if (!location.hash || new URLSearchParams(location.hash.slice(1)).has("split")) {
+  const fragment = new URLSearchParams(location.hash.slice(1));
+  if (!location.hash || fragment.has("split") || fragment.has("lang")) {
     loadSplitFromAddress();
   }
 });

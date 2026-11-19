@@ -27,7 +27,7 @@ test("inline math markers are paired, and plain text keys contain none", () => {
       assert.equal(table[key].split("$").length % 2, 1, language + ": unpaired $ in " + key);
     }
     for (const key of textKeys) {
-      assert.ok(!table[key].includes("$"), language + ": $ in plain text key " + key);
+      assert.doesNotMatch(table[key], /\$[^$]+\$/, language + ": inline math in plain text key " + key);
     }
   }
 });

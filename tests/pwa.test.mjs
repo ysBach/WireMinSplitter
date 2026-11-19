@@ -305,13 +305,18 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
     "const numberStyle = 'comma_period'; const t = (k, vars = {}) => { if (k === 'summary.template') return 'Transactions: ' + vars.transactions + ' | Burden penalty: ' + vars.burdenPenalty; return k; };" +
     appCode.slice(appCode.indexOf("function parseDecimalScientific"), appCode.indexOf("function spentStepDigits")) +
     appCode.slice(appCode.indexOf("function roleLabel"), appCode.indexOf("function parseDecimalScientific")) +
-    "const CURRENCY_UNITS = { KRW: '원' }; const selectedCurrency = () => 'KRW';" +
+    appCode.slice(appCode.indexOf("const CURRENCY_UNITS"), appCode.indexOf("\n", appCode.indexOf("const CUSTOM_CURRENCY_PREFIX"))) +
+    "const selectedCurrency = () => 'KRW';" +
     appCode.slice(appCode.indexOf("function formatPlanAmount"), appCode.indexOf("function renderResult")) +
     appCode.slice(appCode.indexOf("function appendPlanLines"), appCode.indexOf("function resultLines")) +
-    "; return { renderPlanIntoElements, appendPlanLines };"
+    "; return { formatPlanAmount, renderPlanIntoElements, appendPlanLines };"
   )();
 
-  const { renderPlanIntoElements, appendPlanLines } = fns;
+  const { formatPlanAmount, renderPlanIntoElements, appendPlanLines } = fns;
+  assert.equal(formatPlanAmount("-1234.50", 2, "USD"), "-$1,234.50");
+  assert.equal(formatPlanAmount("1234.50", 2, "EUR"), "€1,234.50");
+  assert.equal(formatPlanAmount("1234.50", 2, "custom:R&D credits"), "1,234.50 R&D credits");
+  assert.equal(formatPlanAmount("1234.50", 2, "custom:"), "1,234.50");
 
   class MockElement {
     constructor() {

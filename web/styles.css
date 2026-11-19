@@ -185,12 +185,18 @@ h3 {
 }
 
 #people-count,
-#multiplier {
+#multiplier,
+#currency-unit,
+#original-currency-unit {
   width: 5rem;
 }
 
 #number-style {
   min-width: 7.2rem;
+}
+
+#original-currency-group {
+  flex-wrap: wrap;
 }
 
 .checkbox {
