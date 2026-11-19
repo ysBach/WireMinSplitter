@@ -154,6 +154,19 @@ test("rows reject typed duplicates, bad repeat counts and invalid names", () => 
   assert.ok(long.every((p) => p.name.length <= 120));
 });
 
+test("transfers use the receiving row's account after repeated names expand", () => {
+  const result = solveSettlement({ rows: [
+    { name: "Team", repeat: 2, spent: "5", account: "Team account" },
+    { name: "Team 1", spent: "5" },
+    { name: "Payer", account: "Payer account" },
+  ], multiplier: "2" });
+  for (const plan of [result, result.original]) {
+    assert.deepEqual(plan.transfers.map((t) => [t.to, t.receiverAccount]), [
+      ["Team 1", undefined], ["Team 1 (2)", "Team account"], ["Team 2", "Team account"],
+    ]);
+  }
+});
+
 test("the worker answers with result or error and keeps the request id", async () => {
   const sent = [];
   globalThis.self = { postMessage: (message) => sent.push(message) };

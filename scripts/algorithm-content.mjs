@@ -9,6 +9,8 @@
 // Language codes, with the names that the Markdown language links show.
 export const LANGUAGES = { en: "English", ko: "한국어", ja: "日本語", zh: "中文" };
 
+export const SUMMARY_STEPS = ["quick.balance", "quick.round", "quick.plan"];
+
 // Display formulas: MathML for the web page, TeX for GitHub Markdown.
 export const FORMULAS = {
   balance: {
@@ -103,6 +105,11 @@ export const BLOCKS = [
 export const TEXT = {
   en: {
     "title": "How the algorithm works",
+    "quick.balance": "Divide total spending by the number of people. Compare each person’s share with their spending and apply any adjustments.",
+    "quick.round": "Round each balance down to a multiple of 0.01. Add 0.01 to the balances with the largest remainders until the total is zero.",
+    "quick.plan": "Find the fewest transfers. If plans tie, choose the one with fewer extra transfers from payers outside the preferred group.",
+    "quick.example": "A spends 30 for three people. Each share is 10. B sends 10 to A. C sends 10 to A.",
+    "quick.details": "Calculation details and proof",
     "intro": "The tool finds the plan with the fewest transfers. First, it computes each person's balance in whole cents. Then an exact search finds the best plan. Section 6 proves that this plan is optimal.",
     "h.input": "1. Check the input",
     "in.1": "Each name must be unique and not empty. The tool applies Unicode NFC, removes white space at both ends, and keeps at most 120 code points.",
@@ -172,6 +179,11 @@ export const TEXT = {
   },
   ko: {
     "title": "알고리즘 작동 방식",
+    "quick.balance": "총지출을 인원수로 나눕니다. 각자 낸 돈과 자기 몫을 비교하고 추가 부담·수령액을 반영합니다.",
+    "quick.round": "잔액을 0.01 단위로 맞춥니다. 보내는 돈과 받는 돈의 합계는 같습니다.",
+    "quick.plan": "송금 횟수가 가장 적은 안을 찾습니다. 횟수가 같으면 다중 송금 선호자로 표시하지 않은 사람의 추가 송금이 적은 안을 고릅니다.",
+    "quick.example": "세 사람의 식비 3만 원을 A가 냈다면 한 사람 몫은 1만 원입니다. B와 C가 A에게 1만 원씩 보냅니다.",
+    "quick.details": "계산 과정과 최소 송금 횟수 증명",
     "intro": "이 도구는 송금 횟수가 가장 적은 계획을 찾습니다. 먼저 각 사람의 잔액을 센트 단위 정수로 계산합니다. 그다음 정확한 탐색으로 가장 좋은 계획을 찾습니다. 6절에서 이 계획이 최적임을 증명합니다.",
     "h.input": "1. 입력 확인",
     "in.1": "이름은 비어 있으면 안 되고 서로 달라야 합니다. 도구는 유니코드 NFC로 정규화하고, 앞뒤 공백을 지우고, 최대 120 코드 포인트만 남깁니다.",
@@ -241,6 +253,11 @@ export const TEXT = {
   },
   ja: {
     "title": "アルゴリズムの仕組み",
+    "quick.balance": "支出の合計を人数で割ります。各自の負担額と支払額を比べ、追加の負担額と受取額を反映します。",
+    "quick.round": "残高を0.01単位に丸め、送る総額と受け取る総額を一致させます。",
+    "quick.plan": "送金回数が最少の案を選びます。同数なら、複数回の送金を希望しない人の追加送金が少ない案を選びます。",
+    "quick.example": "Aが3人分の食事代3,000円を払うと、1人分は1,000円です。BとCはそれぞれAに1,000円を送ります。",
+    "quick.details": "計算の詳細と最少回数の証明",
     "intro": "このツールは、送金回数が最も少ない計画を探します。まず、各人の残高をセント単位の整数で計算します。次に、厳密な探索で最良の計画を見つけます。6 節で、この計画が最適であることを証明します。",
     "h.input": "1. 入力の確認",
     "in.1": "名前は空にできず、互いに異なる必要があります。Unicode NFC で正規化し、前後の空白を削除し、最大 120 コードポイントまで残します。",
@@ -310,6 +327,11 @@ export const TEXT = {
   },
   zh: {
     "title": "算法如何工作",
+    "quick.balance": "将总支出除以人数。比较每个人的垫付金额与应付份额，再计入额外应付和应收金额。",
+    "quick.round": "将余额取整到 0.01，使转出总额等于转入总额。",
+    "quick.plan": "选择转账次数最少的方案。如果次数相同，优先减少未勾选多次转账偏好者的额外转账。",
+    "quick.example": "A 为三个人付了 30 元，每人应付 10 元。B 和 C 各转 10 元给 A。",
+    "quick.details": "计算细节与最少转账次数的证明",
     "intro": "本工具寻找转账次数最少的方案。首先，它把每个人的余额计算为以分为单位的整数。然后，它用精确搜索找到最佳方案。第 6 节证明该方案最优。",
     "h.input": "1. 检查输入",
     "in.1": "姓名不能为空，且必须互不相同。工具先做 Unicode NFC 规范化，再删除首尾空白，最多保留 120 个码位。",

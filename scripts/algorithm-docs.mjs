@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { BLOCKS, FORMULAS, LANGUAGES, TEXT } from "./algorithm-content.mjs";
+import { BLOCKS, FORMULAS, LANGUAGES, SUMMARY_STEPS, TEXT } from "./algorithm-content.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const INDEX_HTML = path.join(ROOT, "web", "index.html");
@@ -31,8 +31,8 @@ const TEX_SYMBOLS = {
 };
 
 const EN = TEXT.en;
-const KEYS = ["title"];
-const PLAIN_KEYS = new Set(["title"]);
+const KEYS = ["title", ...SUMMARY_STEPS, "quick.example", "quick.details"];
+const PLAIN_KEYS = new Set(KEYS);
 for (const block of BLOCKS) {
   const headKeys = (block.head ?? []).map((cell) => cell.key).filter(Boolean);
   KEYS.push(...[block.key, ...(block.keys ?? []), ...(block.items ?? []).map((item) => item[1]), ...headKeys].filter(Boolean));
@@ -62,6 +62,9 @@ function htmlSection() {
     '        <div class="algorithm-body">',
   ];
   const add = (indent, ...items) => lines.push(...items.map((item) => " ".repeat(indent) + item));
+  add(8, "<ol>");
+  add(10, ...SUMMARY_STEPS.map((key) => textElement("li", key)));
+  add(8, "</ol>", textElement("p", "quick.example"), "<details>", textElement("summary", "quick.details"));
   for (const block of BLOCKS) {
     if (block.type === "h3" || block.type === "h4") {
       lines.push("");
@@ -103,7 +106,7 @@ function htmlSection() {
       throw new Error("Unknown block type: " + block.type);
     }
   }
-  lines.push("        </div>", "      </details>", HTML_END);
+  lines.push("        </details>", "        </div>", "      </details>", HTML_END);
   return lines.join("\n");
 }
 
@@ -157,6 +160,7 @@ function markdown(language) {
   const text = TEXT[language];
   const links = Object.entries(LANGUAGES).map(([code, name]) => (code === language ? name : "[" + name + "](" + path.basename(markdownFile(code)) + ")"));
   const lines = ["<!-- Generated file: " + NOTE + ". -->", "", "# " + text.title, "", links.join(" · "), ""];
+  lines.push(...SUMMARY_STEPS.map((key, index) => (index + 1) + ". " + text[key]), "", text["quick.example"], "");
   for (const block of BLOCKS) {
     if (block.type === "h3") lines.push("## " + text[block.key], "");
     else if (block.type === "h4") lines.push("### " + text[block.key], "");

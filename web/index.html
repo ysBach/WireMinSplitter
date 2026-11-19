@@ -223,6 +223,26 @@
                 aria-label="Multiplier"
               />
             </label>
+            <label class="field-inline">
+              <span data-i18n="label.currency">Currency</span>
+              <select id="currency">
+                <option value="auto" data-i18n="option.currency_default">Default (USD)</option>
+                <option value="USD">USD</option>
+                <option value="KRW">원 (KRW)</option>
+                <option value="CNY">元 (CNY)</option>
+                <option value="JPY">円 (JPY)</option>
+              </select>
+            </label>
+            <label id="original-currency-group" class="field-inline hidden">
+              <span data-i18n="label.original_currency">Currency before multiplier</span>
+              <select id="original-currency">
+                <option value="same" data-i18n="option.same_currency">Same currency</option>
+                <option value="USD">USD</option>
+                <option value="KRW">원 (KRW)</option>
+                <option value="CNY">元 (CNY)</option>
+                <option value="JPY">円 (JPY)</option>
+              </select>
+            </label>
             <label
               class="field-inline"
               for="number-style"
@@ -391,6 +411,14 @@
       <details id="algorithm-details" class="card algorithm-details" data-html2canvas-ignore="true">
         <summary data-i18n="algorithm.title">How the algorithm works</summary>
         <div class="algorithm-body">
+        <ol>
+          <li data-i18n="algorithm.quick.balance">Divide total spending by the number of people. Compare each person’s share with their spending and apply any adjustments.</li>
+          <li data-i18n="algorithm.quick.round">Round each balance down to a multiple of 0.01. Add 0.01 to the balances with the largest remainders until the total is zero.</li>
+          <li data-i18n="algorithm.quick.plan">Find the fewest transfers. If plans tie, choose the one with fewer extra transfers from payers outside the preferred group.</li>
+        </ol>
+        <p data-i18n="algorithm.quick.example">A spends 30 for three people. Each share is 10. B sends 10 to A. C sends 10 to A.</p>
+        <details>
+        <summary data-i18n="algorithm.quick.details">Calculation details and proof</summary>
         <p data-i18n-math="algorithm.intro">The tool finds the plan with the fewest transfers. First, it computes each person's balance in whole cents. Then an exact search finds the best plan. Section 6 proves that this plan is optimal.</p>
 
         <h3 data-i18n="algorithm.h.input">1. Check the input</h3>
@@ -531,6 +559,7 @@
           <li data-i18n-math="algorithm.lim.5">Only a search that completes returns the optimal plan for the cent balances.</li>
         </ul>
         <p><a data-i18n="algorithm.source" href="./solver.js" target="_blank" rel="noopener">View the solver source code (JavaScript)</a></p>
+        </details>
         </div>
       </details>
       <!-- END generated algorithm section -->
@@ -555,6 +584,12 @@
             placeholder="Name"
             data-i18n-placeholder="placeholder.name"
           />
+          <details class="account-field">
+            <summary data-i18n="label.account">Receiving account</summary>
+            <input type="text" class="account" autocomplete="off" spellcheck="false"
+              placeholder="Bank and account number" data-i18n-placeholder="placeholder.account" />
+            <small data-i18n="hint.shared_account">Included in shared links.</small>
+          </details>
         </td>
         <td class="repeat-col">
           <input

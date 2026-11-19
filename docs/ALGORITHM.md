@@ -4,6 +4,12 @@
 
 English · [한국어](ALGORITHM.ko.md) · [日本語](ALGORITHM.ja.md) · [中文](ALGORITHM.zh.md)
 
+1. Divide total spending by the number of people. Compare each person’s share with their spending and apply any adjustments.
+2. Round each balance down to a multiple of 0.01. Add 0.01 to the balances with the largest remainders until the total is zero.
+3. Find the fewest transfers. If plans tie, choose the one with fewer extra transfers from payers outside the preferred group.
+
+A spends 30 for three people. Each share is 10. B sends 10 to A. C sends 10 to A.
+
 The tool finds the plan with the fewest transfers. First, it computes each person's balance in whole cents. Then an exact search finds the best plan. Section 6 proves that this plan is optimal.
 
 ## 1. Check the input

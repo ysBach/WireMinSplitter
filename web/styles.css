@@ -245,6 +245,16 @@ input.repeat {
   width: 4.2rem;
 }
 
+.account-field {
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+}
+
+.account-field summary {
+  color: var(--accent);
+  cursor: pointer;
+}
+
 button {
   border: none;
   border-radius: 8px;

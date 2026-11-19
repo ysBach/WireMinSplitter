@@ -31,6 +31,11 @@ const afterRoundingGroup = document.querySelector("#rounding-after-group");
 const beforeRoundingLabel = document.querySelector("#rounding-before-label");
 const afterRoundingLabel = document.querySelector("#rounding-after-label");
 const multiplierInput = document.querySelector("#multiplier");
+const currencySelect = document.querySelector("#currency");
+const originalCurrencySelect = document.querySelector("#original-currency");
+const originalCurrencyGroup = document.querySelector("#original-currency-group");
+const DEFAULT_CURRENCIES = { en: "USD", ko: "KRW", zh: "CNY", ja: "JPY" };
+const CURRENCY_UNITS = { USD: "USD", KRW: "원", CNY: "元", JPY: "円" };
 const numberStyleSelect = document.querySelector("#number-style");
 const peopleCountInput = document.querySelector("#people-count");
 const applyCountButton = document.querySelector("#apply-count");
@@ -74,6 +79,14 @@ const MAX_PARTICIPANT_NAME_LENGTH = 120;
 
 const TRANSLATIONS = {
   "en": {
+    "label.account": "Receiving account",
+    "placeholder.account": "Bank and account number",
+    "aria.row_account": "Row {row} receiving account",
+    "hint.shared_account": "Included in shared links.",
+    "label.currency": "Currency",
+    "label.original_currency": "Currency before multiplier",
+    "option.same_currency": "Same currency",
+    "option.currency_default": "Default (USD)",
     "title.document": "Wire-Min-Splitter",
     "app.title": "Wire-Min-Splitter",
     "app.subtitle": "Enter party spending and optional fairness adjustments, then generate minimal transfer instructions.",
@@ -176,6 +189,11 @@ const TRANSLATIONS = {
     "field.extra_get": "extra get",
     // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "How the algorithm works",
+    "algorithm.quick.balance": "Divide total spending by the number of people. Compare each person’s share with their spending and apply any adjustments.",
+    "algorithm.quick.round": "Round each balance down to a multiple of 0.01. Add 0.01 to the balances with the largest remainders until the total is zero.",
+    "algorithm.quick.plan": "Find the fewest transfers. If plans tie, choose the one with fewer extra transfers from payers outside the preferred group.",
+    "algorithm.quick.example": "A spends 30 for three people. Each share is 10. B sends 10 to A. C sends 10 to A.",
+    "algorithm.quick.details": "Calculation details and proof",
     "algorithm.intro": "The tool finds the plan with the fewest transfers. First, it computes each person's balance in whole cents. Then an exact search finds the best plan. Section 6 proves that this plan is optimal.",
     "algorithm.h.input": "1. Check the input",
     "algorithm.in.1": "Each name must be unique and not empty. The tool applies Unicode NFC, removes white space at both ends, and keeps at most 120 code points.",
@@ -245,6 +263,14 @@ const TRANSLATIONS = {
     // END generated algorithm text
   },
   "ko": {
+    "label.account": "받는 계좌",
+    "placeholder.account": "은행명과 계좌번호",
+    "aria.row_account": "{row}행 받는 계좌",
+    "hint.shared_account": "공유 링크에 포함됩니다.",
+    "label.currency": "통화",
+    "label.original_currency": "배수 적용 전 통화",
+    "option.same_currency": "같은 통화",
+    "option.currency_default": "기본값 (원)",
     "title.document": "Wire-Min-Splitter (최소송금 N빵 계산기)",
     "app.title": "Wire-Min-Splitter (최소송금 N빵 계산기)",
     "app.subtitle": "파티 지출과 보정값을 입력하면 최소 송금 횟수 정산안을 계산합니다.",
@@ -347,6 +373,11 @@ const TRANSLATIONS = {
     "field.extra_get": "추가 수령",
     // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "알고리즘 작동 방식",
+    "algorithm.quick.balance": "총지출을 인원수로 나눕니다. 각자 낸 돈과 자기 몫을 비교하고 추가 부담·수령액을 반영합니다.",
+    "algorithm.quick.round": "잔액을 0.01 단위로 맞춥니다. 보내는 돈과 받는 돈의 합계는 같습니다.",
+    "algorithm.quick.plan": "송금 횟수가 가장 적은 안을 찾습니다. 횟수가 같으면 다중 송금 선호자로 표시하지 않은 사람의 추가 송금이 적은 안을 고릅니다.",
+    "algorithm.quick.example": "세 사람의 식비 3만 원을 A가 냈다면 한 사람 몫은 1만 원입니다. B와 C가 A에게 1만 원씩 보냅니다.",
+    "algorithm.quick.details": "계산 과정과 최소 송금 횟수 증명",
     "algorithm.intro": "이 도구는 송금 횟수가 가장 적은 계획을 찾습니다. 먼저 각 사람의 잔액을 센트 단위 정수로 계산합니다. 그다음 정확한 탐색으로 가장 좋은 계획을 찾습니다. 6절에서 이 계획이 최적임을 증명합니다.",
     "algorithm.h.input": "1. 입력 확인",
     "algorithm.in.1": "이름은 비어 있으면 안 되고 서로 달라야 합니다. 도구는 유니코드 NFC로 정규화하고, 앞뒤 공백을 지우고, 최대 120 코드 포인트만 남깁니다.",
@@ -416,6 +447,14 @@ const TRANSLATIONS = {
     // END generated algorithm text
   },
   "ja": {
+    "label.account": "受取口座",
+    "placeholder.account": "銀行名と口座番号",
+    "aria.row_account": "{row}行目の受取口座",
+    "hint.shared_account": "共有リンクに含まれます。",
+    "label.currency": "通貨",
+    "label.original_currency": "倍率適用前の通貨",
+    "option.same_currency": "同じ通貨",
+    "option.currency_default": "既定 (円)",
     "title.document": "Wire-Min-Splitter (最小送金バラバラ割り勘)",
     "app.title": "Wire-Min-Splitter (最小送金バラバラ割り勘)",
     "app.subtitle": "パーティーの支出と補正値を入力すると、送金回数が最小の精算案を計算します。",
@@ -518,6 +557,11 @@ const TRANSLATIONS = {
     "field.extra_get": "追加受取",
     // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "アルゴリズムの仕組み",
+    "algorithm.quick.balance": "支出の合計を人数で割ります。各自の負担額と支払額を比べ、追加の負担額と受取額を反映します。",
+    "algorithm.quick.round": "残高を0.01単位に丸め、送る総額と受け取る総額を一致させます。",
+    "algorithm.quick.plan": "送金回数が最少の案を選びます。同数なら、複数回の送金を希望しない人の追加送金が少ない案を選びます。",
+    "algorithm.quick.example": "Aが3人分の食事代3,000円を払うと、1人分は1,000円です。BとCはそれぞれAに1,000円を送ります。",
+    "algorithm.quick.details": "計算の詳細と最少回数の証明",
     "algorithm.intro": "このツールは、送金回数が最も少ない計画を探します。まず、各人の残高をセント単位の整数で計算します。次に、厳密な探索で最良の計画を見つけます。6 節で、この計画が最適であることを証明します。",
     "algorithm.h.input": "1. 入力の確認",
     "algorithm.in.1": "名前は空にできず、互いに異なる必要があります。Unicode NFC で正規化し、前後の空白を削除し、最大 120 コードポイントまで残します。",
@@ -587,6 +631,14 @@ const TRANSLATIONS = {
     // END generated algorithm text
   },
   "zh": {
+    "label.account": "收款账户",
+    "placeholder.account": "银行名称和账号",
+    "aria.row_account": "第 {row} 行收款账户",
+    "hint.shared_account": "分享链接中会包含此账户。",
+    "label.currency": "币种",
+    "label.original_currency": "乘以倍率前的币种",
+    "option.same_currency": "相同币种",
+    "option.currency_default": "默认 (元)",
     "title.document": "Wire-Min-Splitter (最少转账AA计算器)",
     "app.title": "Wire-Min-Splitter (最少转账AA计算器)",
     "app.subtitle": "输入聚会支出和调整项，生成转账次数最少的结算方案。",
@@ -689,6 +741,11 @@ const TRANSLATIONS = {
     "field.extra_get": "额外收取",
     // BEGIN generated algorithm text: edit scripts/algorithm-content.mjs, then run npm run docs:algorithm
     "algorithm.title": "算法如何工作",
+    "algorithm.quick.balance": "将总支出除以人数。比较每个人的垫付金额与应付份额，再计入额外应付和应收金额。",
+    "algorithm.quick.round": "将余额取整到 0.01，使转出总额等于转入总额。",
+    "algorithm.quick.plan": "选择转账次数最少的方案。如果次数相同，优先减少未勾选多次转账偏好者的额外转账。",
+    "algorithm.quick.example": "A 为三个人付了 30 元，每人应付 10 元。B 和 C 各转 10 元给 A。",
+    "algorithm.quick.details": "计算细节与最少转账次数的证明",
     "algorithm.intro": "本工具寻找转账次数最少的方案。首先，它把每个人的余额计算为以分为单位的整数。然后，它用精确搜索找到最佳方案。第 6 节证明该方案最优。",
     "algorithm.h.input": "1. 检查输入",
     "algorithm.in.1": "姓名不能为空，且必须互不相同。工具先做 Unicode NFC 规范化，再删除首尾空白，最多保留 120 个码位。",
@@ -939,6 +996,7 @@ function updateAllRowAriaLabels() {
     const dragBtn = row.querySelector(".drag-handle");
 
     if (nameInput) nameInput.setAttribute("aria-label", t("aria.row_name", { row: rowNum }));
+    row.querySelector(".account").setAttribute("aria-label", t("aria.row_account", { row: rowNum }));
     if (repeatInput) repeatInput.setAttribute("aria-label", t("aria.row_repeat", { row: rowNum }));
     if (spentInput) spentInput.setAttribute("aria-label", t("aria.row_spent", { row: rowNum }));
     if (extraPayInput) extraPayInput.setAttribute("aria-label", t("aria.row_extra_pay", { row: rowNum }));
@@ -956,6 +1014,9 @@ function localizeRow(row) {
   const preferredCheckbox = row.querySelector(".preferred");
 
   if (nameInput) nameInput.placeholder = t("placeholder.name");
+  row.querySelector(".account").placeholder = t("placeholder.account");
+  row.querySelector(".account-field summary").textContent = t("label.account");
+  row.querySelector(".account-field small").textContent = t("hint.shared_account");
   if (removeButton) removeButton.textContent = t("button.remove");
   if (handle) handle.title = t("title.drag_handle");
   if (preferredCheckbox) preferredCheckbox.title = t("tooltip.preferred_multi");
@@ -1138,6 +1199,7 @@ function refreshRoundingModeUI() {
   const mult = multiplierInput ? multiplierInput.value.trim() : "1";
   const singleMode = isMultiplierOne(mult);
   beforeRoundingGroup.classList.toggle("hidden", singleMode);
+  originalCurrencyGroup.classList.toggle("hidden", singleMode);
   refreshSpentStep();
 
   if (singleMode) {
@@ -1558,6 +1620,8 @@ function applyAdjustmentsStateToRow(row) {
 function createParticipantRow(data) {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
   row.querySelector(".name").value = data.name ?? "";
+  row.querySelector(".account").value = data.account ?? "";
+  row.querySelector(".account-field").open = Boolean(data.account);
   row.querySelector(".repeat").value = data.repeat ?? "1";
   row.querySelector(".spent").value = data.spent ?? "0";
   row.querySelector(".spent").step = formatRoundingUnit(spentStepDigits());
@@ -1674,6 +1738,7 @@ function collectAndValidatePayload() {
   for (const row of rowList()) {
     const rawName = row.querySelector(".name").value;
     const trimmedName = rawName.trim();
+    const account = row.querySelector(".account").value.trim();
     const rawSpent = row.querySelector(".spent").value.trim();
     const rawExtraPay = extraPayEnabled ? row.querySelector(".extra-pay").value.trim() : "0";
     const rawExtraGet = extraGetEnabled ? row.querySelector(".extra-get").value.trim() : "0";
@@ -1685,7 +1750,7 @@ function collectAndValidatePayload() {
     const extraGetPopulated = isFieldPopulated(rawExtraGet);
     const repeatCustom = repeatEnabled && rawRepeat !== "" && rawRepeat !== "1";
 
-    const isPopulated = trimmedName !== "" || spentPopulated || extraPayPopulated || extraGetPopulated || repeatCustom || preferred;
+    const isPopulated = trimmedName !== "" || account !== "" || spentPopulated || extraPayPopulated || extraGetPopulated || repeatCustom || preferred;
 
     if (!isPopulated) {
       // Truly empty blank row, safely skip
@@ -1723,6 +1788,7 @@ function collectAndValidatePayload() {
 
     rows.push({
       name: trimmedName,
+      account,
       spent: rawSpent === "" ? "0" : rawSpent,
       extra_pay: rawExtraPay === "" ? "0" : rawExtraPay,
       extra_get: rawExtraGet === "" ? "0" : rawExtraGet,
@@ -1860,7 +1926,23 @@ async function calculate(options = {}) {
 // Result Rendering & Notices
 // ==========================================
 
-function renderPlanIntoElements(planData, digits, elements) {
+function selectedCurrency(original = false) {
+  if (original && originalCurrencySelect.value !== "same") return originalCurrencySelect.value;
+  return currencySelect.value === "auto" ? DEFAULT_CURRENCIES[currentLanguage] : currencySelect.value;
+}
+
+function formatPlanAmount(amount, digits, currency) {
+  const rounded = roundBigIntCents(decimalToBigIntCents(amount), digits);
+  return formatRoundedAmountBigInt(rounded, digits) + " " + CURRENCY_UNITS[currency];
+}
+
+function formatTransfer(transfer, digits, currency) {
+  const amount = formatPlanAmount(transfer.amount, digits, currency);
+  const account = transfer.receiverAccount ? " (" + transfer.receiverAccount + ")" : "";
+  return transfer.from + " → " + transfer.to + ": " + amount + (digits < 0 ? " ~" : "") + account;
+}
+
+function renderPlanIntoElements(planData, digits, elements, currency = selectedCurrency()) {
   const { summaryEl, balancesEl, transfersEl } = elements;
   balancesEl.innerHTML = "";
   transfersEl.innerHTML = "";
@@ -1878,21 +1960,15 @@ function renderPlanIntoElements(planData, digits, elements) {
   summaryEl.textContent = t("summary.template", { transactions, burdenPenalty });
 
   for (const item of planData.balances || []) {
-    const rawCents = decimalToBigIntCents(item.net);
-    const rounded = roundBigIntCents(rawCents, digits);
-    const formatted = formatRoundedAmountBigInt(rounded, digits);
+    const formatted = formatPlanAmount(item.net, digits, currency);
     const li = document.createElement("li");
     li.textContent = item.name + ": " + formatted + " (" + roleLabel(item.role) + ")";
     balancesEl.appendChild(li);
   }
 
   for (const transfer of planData.transfers || []) {
-    const rawCents = decimalToBigIntCents(transfer.amount);
-    const rounded = roundBigIntCents(rawCents, digits);
-    const formatted = formatRoundedAmountBigInt(rounded, digits);
-    const approxTag = digits < 0 ? " ~" : "";
     const li = document.createElement("li");
-    li.textContent = transfer.from + " -> " + transfer.to + ": " + formatted + approxTag;
+    li.textContent = formatTransfer(transfer, digits, currency);
     transfersEl.appendChild(li);
   }
 
@@ -1929,7 +2005,7 @@ function renderResult(data) {
       summaryEl: originalSummaryEl,
       balancesEl: originalBalancesEl,
       transfersEl: originalTransfersEl,
-    });
+    }, selectedCurrency(true));
 
     renderPlanIntoElements(data, afterRoundingDigits, {
       summaryEl: multipliedSummaryEl,
@@ -1948,7 +2024,7 @@ function renderResult(data) {
   }
 }
 
-function appendPlanLines(lines, heading, planData, digits) {
+function appendPlanLines(lines, heading, planData, digits, currency = selectedCurrency()) {
   if (heading) {
     lines.push(heading);
     lines.push("");
@@ -1964,19 +2040,13 @@ function appendPlanLines(lines, heading, planData, digits) {
   lines.push("");
   lines.push(t("section.net_balances"));
   for (const item of planData.balances || []) {
-    const rawCents = decimalToBigIntCents(item.net);
-    const rounded = roundBigIntCents(rawCents, digits);
-    const formatted = formatRoundedAmountBigInt(rounded, digits);
+    const formatted = formatPlanAmount(item.net, digits, currency);
     lines.push("- " + item.name + ": " + formatted + " (" + roleLabel(item.role) + ")");
   }
   lines.push("");
   lines.push(t("section.transfers"));
   for (const transfer of planData.transfers || []) {
-    const rawCents = decimalToBigIntCents(transfer.amount);
-    const rounded = roundBigIntCents(rawCents, digits);
-    const formatted = formatRoundedAmountBigInt(rounded, digits);
-    const approxTag = digits < 0 ? " ~" : "";
-    lines.push("- " + transfer.from + " -> " + transfer.to + ": " + formatted + approxTag);
+    lines.push("- " + formatTransfer(transfer, digits, currency));
   }
   if ((planData.transfers || []).length === 0) {
     lines.push("- " + t("summary.no_transfers"));
@@ -2002,7 +2072,7 @@ function resultLines() {
   lines.push("");
 
   if (lastResultData.original) {
-    appendPlanLines(lines, t("heading.original_plan"), lastResultData.original, beforeRoundingDigits);
+    appendPlanLines(lines, t("heading.original_plan"), lastResultData.original, beforeRoundingDigits, selectedCurrency(true));
     lines.push("");
     appendPlanLines(lines, t("heading.multiplied_plan"), lastResultData, afterRoundingDigits);
   } else {
@@ -2122,6 +2192,12 @@ numberStyleSelect.addEventListener("change", () => {
   setNumberStyle(numberStyleSelect.value);
   updateSplitLink();
 });
+for (const select of [currencySelect, originalCurrencySelect]) {
+  select.addEventListener("change", () => {
+    updateSplitLink();
+    if (lastResultData) renderResult(lastResultData);
+  });
+}
 copyResultsButton.addEventListener("click", () => {
   void copyResults();
 });
@@ -2185,6 +2261,7 @@ if (cancelCalculateButton) {
 for (const button of languageButtons) {
   button.addEventListener("click", () => {
     setLanguage(button.dataset.lang);
+    updateSplitLink();
   });
 }
 
@@ -2201,6 +2278,7 @@ updateOfflineBadge();
 // A name starts a row in the version 1 fragment. Its optional fields follow it.
 // Keep raw input strings so copying a link also preserves precision and unfinished edits.
 const splitRowFields = new Map([
+  ["account", [".account", ""]],
   ["spent", [".spent", "0"]],
   ["repeat", [".repeat", "1"]],
   ["extraPay", [".extra-pay", "0"]],
@@ -2215,6 +2293,8 @@ const splitToggles = new Map([
 
 function updateSplitLink() {
   const params = new URLSearchParams({ split: "1" });
+  params.set("currency", selectedCurrency());
+  if (originalCurrencySelect.value !== "same") params.set("originalCurrency", originalCurrencySelect.value);
   for (const [key, toggle] of splitToggles) {
     if (toggle.checked) params.set(key, "1");
   }
@@ -2267,6 +2347,10 @@ function loadSplitFromAddress() {
   const fragment = new URLSearchParams(location.hash.slice(1));
   const shared = fragment.get("split") === "1";
   const params = shared ? fragment : new URLSearchParams();
+  const currency = params.get("currency");
+  const originalCurrency = params.get("originalCurrency");
+  currencySelect.value = Object.hasOwn(CURRENCY_UNITS, currency) ? currency : "auto";
+  originalCurrencySelect.value = Object.hasOwn(CURRENCY_UNITS, originalCurrency) ? originalCurrency : "same";
   for (const [key, toggle] of splitToggles) {
     toggle.checked = params.get(key) === "1";
   }

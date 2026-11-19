@@ -450,7 +450,8 @@ export function expandRows(rows) {
   const preferred = [];
   for (const entry of parsed) {
     for (const name of names.get(entry)) {
-      people.push({ name, spent: entry.row.spent, extra_pay: entry.row.extra_pay, extra_get: entry.row.extra_get });
+      const { spent, extra_pay, extra_get, account } = entry.row;
+      people.push({ name, spent, extra_pay, extra_get, account });
       if (entry.row.preferred === true) preferred.push(name);
     }
   }
@@ -464,6 +465,7 @@ const orDefault = (value, fallback) => (value === undefined || value === null ||
 function toResult(people, multiplier, preferred, strict) {
   const { balances, notice } = balancedNets(people, multiplier);
   const { transfers, penalty } = optimizeTransfers(balances, preferred, strict);
+  const accounts = new Map(people.filter((p) => p.account).map((p) => [p.name, p.account]));
   return {
     summary: { transactions: transfers.length, burden_penalty: penalty },
     balances: balances.map((b) => ({
@@ -471,7 +473,11 @@ function toResult(people, multiplier, preferred, strict) {
       net: formatCents(b.cents),
       role: b.cents < 0n ? "payer" : b.cents > 0n ? "receiver" : "settled",
     })),
-    transfers: transfers.map((t) => ({ from: t.payer, to: t.receiver, amount: formatCents(t.cents) })),
+    transfers: transfers.map((t) => {
+      const transfer = { from: t.payer, to: t.receiver, amount: formatCents(t.cents) };
+      if (accounts.has(t.receiver)) transfer.receiverAccount = accounts.get(t.receiver);
+      return transfer;
+    }),
     rounding_notice: notice,
   };
 }
@@ -503,6 +509,7 @@ export function solveSettlement(payload) {
     if (item === null || typeof item !== "object") throw new SettlementError("Each participant must be an object.");
     return {
       name: cleanName(item.name),
+      account: typeof item.account === "string" ? item.account.trim() : "",
       spent: parseDecimal(orDefault(item.spent, 0), "spent"),
       pay: parseDecimal(orDefault(item.extra_pay, 0), "extra_pay"),
       get: parseDecimal(orDefault(item.extra_get, 0), "extra_get"),

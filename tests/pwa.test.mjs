@@ -49,9 +49,9 @@ test("version 1 split links retain ordered rows, exact amounts, and unfinished e
   const reader = app.slice(app.indexOf("function readSplitRows"), app.indexOf("function readLinkRounding"));
   const readRows = new Function(fields + reader + "; return readSplitRows;")();
   const params = new URLSearchParams("split=1&name=윤수%2B%26%23&spent=1.000000000000000001e%2B30" +
-    "&repeat=2&name=&spent=&name=Bob&extraPay=2.30&extraGet=1&preferred=1");
+    "&account=Bank+001-02&repeat=2&name=&spent=&name=Bob&extraPay=2.30&extraGet=1&preferred=1");
   assert.deepEqual(readRows(params), [
-    { name: "윤수+&#", spent: "1.000000000000000001e+30", repeat: "2" },
+    { name: "윤수+&#", spent: "1.000000000000000001e+30", repeat: "2", account: "Bank 001-02" },
     { name: "", spent: "" },
     { name: "Bob", extraPay: "2.30", extraGet: "1", preferred: true },
   ]);
@@ -214,6 +214,7 @@ test("Validation logic: row fixtures for blank populated name, empty skipping, d
     "    return rowFixtures.map(rf => ({" +
     "      querySelector(sel) {" +
     "        if (sel === '.name') return { value: rf.name ?? '' };" +
+    "        if (sel === '.account') return { value: rf.account ?? '' };" +
     "        if (sel === '.spent') return { value: String(rf.spent ?? '0') };" +
     "        if (sel === '.extra-pay') return { value: String(rf.extra_pay ?? '0') };" +
     "        if (sel === '.extra-get') return { value: String(rf.extra_get ?? '0') };" +
@@ -304,7 +305,8 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
     "const numberStyle = 'comma_period'; const t = (k, vars = {}) => { if (k === 'summary.template') return 'Transactions: ' + vars.transactions + ' | Burden penalty: ' + vars.burdenPenalty; return k; };" +
     appCode.slice(appCode.indexOf("function parseDecimalScientific"), appCode.indexOf("function spentStepDigits")) +
     appCode.slice(appCode.indexOf("function roleLabel"), appCode.indexOf("function parseDecimalScientific")) +
-    appCode.slice(appCode.indexOf("function renderPlanIntoElements"), appCode.indexOf("function renderResult")) +
+    "const CURRENCY_UNITS = { KRW: '원' }; const selectedCurrency = () => 'KRW';" +
+    appCode.slice(appCode.indexOf("function formatPlanAmount"), appCode.indexOf("function renderResult")) +
     appCode.slice(appCode.indexOf("function appendPlanLines"), appCode.indexOf("function resultLines")) +
     "; return { renderPlanIntoElements, appendPlanLines };"
   )();
@@ -343,7 +345,7 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
   const successPlan = {
     summary: { transactions: 1, burden_penalty: 0 },
     balances: [{ name: "Alice", net: "10.00", role: "receiver" }],
-    transfers: [{ from: "Bob", to: "Alice", amount: "10.00" }],
+    transfers: [{ from: "Bob", to: "Alice", amount: "10.00", receiverAccount: "Bank 001-02" }],
   };
   globalThis.document = { createElement: () => new MockElement() };
 
@@ -352,6 +354,11 @@ test("Plan View Rendering: handles plan.error safely, clears lists and avoids fa
   assert.equal(elements.summaryEl.classList.contains("error"), false);
   assert.equal(elements.balancesEl.children.length, 1);
   assert.equal(elements.transfersEl.children.length, 1);
+  const instruction = "Bob → Alice: 10.00 원 (Bank 001-02)";
+  assert.equal(elements.transfersEl.children[0].textContent, instruction);
+  const copied = [];
+  appendPlanLines(copied, "", successPlan, 2);
+  assert.ok(copied.includes("- " + instruction));
 
   const errorPlan = {
     error: { message: "No feasible settlement found with current strict preference constraints.", resource: false },
