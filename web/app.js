@@ -83,6 +83,7 @@ const MAX_PARTICIPANT_NAME_LENGTH = 120;
 const TRANSLATIONS = {
   "en": {
     "label.account": "Receiving account",
+    "button.account": "Account",
     "placeholder.account": "Bank and account number",
     "aria.row_account": "Row {row} receiving account",
     "hint.shared_account": "Included in shared links.",
@@ -278,6 +279,7 @@ const TRANSLATIONS = {
   },
   "ko": {
     "label.account": "받는 계좌",
+    "button.account": "계좌",
     "placeholder.account": "은행명과 계좌번호",
     "aria.row_account": "{row}행 받는 계좌",
     "hint.shared_account": "공유 링크에 포함됩니다.",
@@ -473,6 +475,7 @@ const TRANSLATIONS = {
   },
   "ja": {
     "label.account": "受取口座",
+    "button.account": "口座",
     "placeholder.account": "銀行名と口座番号",
     "aria.row_account": "{row}行目の受取口座",
     "hint.shared_account": "共有リンクに含まれます。",
@@ -668,6 +671,7 @@ const TRANSLATIONS = {
   },
   "zh": {
     "label.account": "收款账户",
+    "button.account": "账户",
     "placeholder.account": "银行名称和账号",
     "aria.row_account": "第 {row} 行收款账户",
     "hint.shared_account": "分享链接中会包含此账户。",
@@ -871,6 +875,7 @@ const NAME_MODE_OPTION_KEYS = {
 
 let currentLanguage = DEFAULT_LANGUAGE;
 let lastResultData = null;
+let accountFieldSequence = 0;
 let ladderSeed = null;
 let draggedRow = null;
 let activeHandle = null;
@@ -1044,7 +1049,9 @@ function updateAllRowAriaLabels() {
     const dragBtn = row.querySelector(".drag-handle");
 
     if (nameInput) nameInput.setAttribute("aria-label", t("aria.row_name", { row: rowNum }));
-    row.querySelector(".account").setAttribute("aria-label", t("aria.row_account", { row: rowNum }));
+    const accountLabel = t("aria.row_account", { row: rowNum });
+    row.querySelector(".account").setAttribute("aria-label", accountLabel);
+    row.querySelector(".account-toggle").setAttribute("aria-label", accountLabel);
     if (repeatInput) repeatInput.setAttribute("aria-label", t("aria.row_repeat", { row: rowNum }));
     if (spentInput) spentInput.setAttribute("aria-label", t("aria.row_spent", { row: rowNum }));
     if (extraPayInput) extraPayInput.setAttribute("aria-label", t("aria.row_extra_pay", { row: rowNum }));
@@ -1063,7 +1070,9 @@ function localizeRow(row) {
 
   if (nameInput) nameInput.placeholder = t("placeholder.name");
   row.querySelector(".account").placeholder = t("placeholder.account");
-  row.querySelector(".account-field summary").textContent = t("label.account");
+  const accountToggle = row.querySelector(".account-toggle");
+  accountToggle.textContent = t("button.account");
+  accountToggle.title = t("label.account");
   row.querySelector(".account-field small").textContent = t("hint.shared_account");
   if (removeButton) removeButton.textContent = t("button.remove");
   if (handle) handle.title = t("title.drag_handle");
@@ -1672,8 +1681,19 @@ function applyAdjustmentsStateToRow(row) {
 function createParticipantRow(data) {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
   row.querySelector(".name").value = data.name ?? "";
-  row.querySelector(".account").value = data.account ?? "";
-  row.querySelector(".account-field").open = Boolean(data.account);
+  const account = row.querySelector(".account");
+  const accountField = row.querySelector(".account-field");
+  const accountToggle = row.querySelector(".account-toggle");
+  account.value = data.account ?? "";
+  accountField.id = "account-field-" + ++accountFieldSequence;
+  accountToggle.setAttribute("aria-controls", accountField.id);
+  accountField.hidden = !account.value;
+  accountToggle.setAttribute("aria-expanded", String(!accountField.hidden));
+  accountToggle.addEventListener("click", () => {
+    accountField.hidden = !accountField.hidden;
+    accountToggle.setAttribute("aria-expanded", String(!accountField.hidden));
+    if (!accountField.hidden) account.focus();
+  });
   row.querySelector(".repeat").value = data.repeat ?? "1";
   row.querySelector(".spent").value = data.spent ?? "0";
   row.querySelector(".spent").step = formatRoundingUnit(spentStepDigits());

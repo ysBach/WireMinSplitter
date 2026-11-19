@@ -251,14 +251,35 @@ input.repeat {
   width: 4.2rem;
 }
 
+.participant-name {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.participant-name .name {
+  flex: 1 1 0;
+  min-width: 5em;
+}
+
+button.account-toggle {
+  flex: none;
+  padding: 0.25rem 0.4rem;
+  min-height: 1.6rem;
+  font-size: 0.78rem;
+  background: white;
+  border: 1px solid var(--line);
+  color: var(--accent);
+}
+
+button.account-toggle:hover,
+button.account-toggle[aria-expanded="true"] {
+  background: #e6f4f1;
+}
+
 .account-field {
   margin-top: 0.25rem;
   font-size: 0.82rem;
-}
-
-.account-field summary {
-  color: var(--accent);
-  cursor: pointer;
 }
 
 button {

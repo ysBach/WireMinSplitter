@@ -597,18 +597,16 @@
           </button>
         </td>
         <td>
-          <input
-            type="text"
-            class="name"
-            placeholder="Name"
-            data-i18n-placeholder="placeholder.name"
-          />
-          <details class="account-field">
-            <summary data-i18n="label.account">Receiving account</summary>
+          <div class="participant-name">
+            <input type="text" class="name" placeholder="Name" data-i18n-placeholder="placeholder.name" />
+            <button type="button" class="account-toggle" aria-expanded="false"
+              data-i18n="button.account" data-i18n-title="label.account">Account</button>
+          </div>
+          <div class="account-field" hidden>
             <input type="text" class="account" autocomplete="off" spellcheck="false"
               placeholder="Bank and account number" data-i18n-placeholder="placeholder.account" />
             <small data-i18n="hint.shared_account">Included in shared links.</small>
-          </details>
+          </div>
         </td>
         <td class="repeat-col">
           <input
